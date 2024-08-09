@@ -1,0 +1,41 @@
+:root{
+
+}
+
+*{
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  box-shadow: 0 0 0 1px red;
+}
+
+html,body{
+  width: 100%;
+  height: 100%;
+
+}
+
+.card {
+  position: relative;
+  border-radius: 10px;
+}
+
+.card-recto,.card-verso{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  top: 0;
+  left: 0;
+}
+
+.card-recto{
+  background-color: red;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card-verso{
+  background-color: yellow;
+}
