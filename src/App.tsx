@@ -11,6 +11,7 @@ function App() {
   const [lists, setLists] = useState<CardList[]>([]);
   const [selectedList, setSelectedList] = useState<string>('');
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [message, setMessage] = useState<string | undefined>(undefined); // Ajout de l'état message
 
   useEffect(() => {
     const storedLists: CardList[] = JSON.parse(localStorage.getItem('cardLists') || '[]');
@@ -23,18 +24,21 @@ function App() {
           isFlipped: showVerso,
         }))
       );
+      setMessage(storedLists[0].message); // Initialiser le message
     }
   }, []);
 
   useEffect(() => {
     if (selectedList) {
-      const selectedCards = lists.find((list) => list.title === selectedList)?.cards || [];
+      const selectedListObject = lists.find((list) => list.title === selectedList);
+      const selectedCards = selectedListObject?.cards || [];
       setCards(
         selectedCards.map((card) => ({
           ...card,
           isFlipped: showVerso,
         }))
       );
+      setMessage(selectedListObject?.message); // Mettre à jour le message lors de la sélection
     }
   }, [showVerso, selectedList, lists]);
 
@@ -91,9 +95,11 @@ function App() {
             isFlipped: showVerso,
           }))
         );
+        setMessage(updatedLists[0].message); // Mettre à jour le message lors de la suppression
       } else {
         setSelectedList('');
         setCards([]);
+        setMessage(undefined); // Effacer le message s'il n'y a plus de listes
       }
     }
   };
@@ -144,6 +150,12 @@ function App() {
         onDeleteList={deleteList}
         onAddNewList={() => setShowModal(true)} 
       />
+
+      {message && (
+        <div className="message p-4 mb-4 text-center border-2 border-card-background rounded bg-background ">
+          <p>{message}</p>
+        </div>
+      )}
 
       {showModal && (
         <Modal

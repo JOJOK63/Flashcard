@@ -1,7 +1,7 @@
 import React from 'react';
-import rerollSvg from '../../../public/refresh-line.svg';
-import addSvg from '../../../public/add-circle-line.svg';
-import deleteSvg from '../../../public/close-circle-line.svg';
+import rerollSvg from '../../../public/refresh-line(1).svg';
+import addSvg from '../../../public/add-circle-line(1).svg';
+import deleteSvg from '../../../public/close-circle-line(1).svg';
 import { CardList } from '../../types';
 
 interface HeaderProps {
@@ -28,18 +28,18 @@ const Header: React.FC<HeaderProps> = ({
   onAddNewList,
 }) => {
   return (
-    <div className="header h-10vh p-5 border-2 rounded-md flex">
+    <div className="header h-10vh p-5 border-2 rounded-md border-card-background flex">
       <div className="w-1/5 flex justify-center items-center add">
         <button className="w-10 h-10" onClick={onAddNewList}>
-          <img src={addSvg} alt="icone add" />
+          <img src={addSvg} alt="icone add" className=' fill-current text-card-background'/>
         </button>
       </div>
-      <div className="w-1/5 flex justify-center items-center uppercase relative">
+      <div className="w-1/10 flex justify-center items-center uppercase relative">
         <label htmlFor="list-choice">Choisissez une liste</label>
         <select
           name="list-choice"
           id="list-choice"
-          className="uppercase ml-2"
+          className="uppercase ml-2 p-2 bg-background border-2 border-card-background"
           value={selectedList}
           onChange={onListChange}
         >
@@ -59,9 +59,9 @@ const Header: React.FC<HeaderProps> = ({
           <input
             type="checkbox"
             checked={showVerso}
-            onChange={onShowVersoChange}
+            onChange={onShowVersoChange} 
           />
-          <span className="slider round"></span>
+          <span className="slider round bg-card-background"></span>
         </label>
       </div>
       <div className="w-1/5 flex justify-center items-center">
@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({
           onChange={onFileImport}
         />
       </div>
-      <div className="w-1/5 flex justify-center items-center refresh">
+      <div className="w-1/10 flex justify-center items-center refresh">
         <button className="w-10 h-10" onClick={resetCards}>
           <img src={rerollSvg} alt="icone reset" />
         </button>

@@ -1,6 +1,17 @@
 {
   "title": "Table de rappel",
-  "message": "0 = S/Z/C[S]/T[S]/X[S], 1 = T/D, 2 = N/GN, 3 = M, 4 = R, 5 = L, 6 = H/CH/SCH/G[E], 7 = K/Q/G[U]/C[K], 8 = F/V/PH , 9 = BP",
+  "message": [
+    { "text": "0 = S/Z/C[S]/T[S]/X[S]", "color": "#FF0000" },
+    { "text": "1 = T/D", "color": "#00FF00" },
+    { "text": "2 = N/GN", "color": "#0000FF" },
+    { "text": "3 = M", "color": "#FF00FF" },
+    { "text": "4 = R", "color": "#FFFF00" },
+    { "text": "5 = L", "color": "#00FFFF" },
+    { "text": "6 = H/CH/SCH/G[E]", "color": "#FFA500" },
+    { "text": "7 = K/Q/G[U]/C[K]", "color": "#800080" },
+    { "text": "8 = F/V/PH", "color": "#A52A2A" },
+    { "text": "9 = BP", "color": "#008000" }
+  ],
   "cards": [
     {
       "id": "0",

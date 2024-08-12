@@ -12,17 +12,17 @@ interface CardProps {
 const Card: React.FC<CardProps> = ({ recto, title, img, isFlipped, flipCard }) => {
   return (
     <div
-      className="card max-w-25 max-h-40 h-40 w-full bg-white border-2"
+      className="card max-w-25 max-h-40 h-40 w-full bg-card-background border-4 border-card-background"
       onClick={flipCard}
     >
       {isFlipped ? (
-        <div className="card-verso flex flex-col items-center justify-between h-full">
+        <div className="card-verso flex flex-col items-center justify-between h-full bg-card-background">
           {img && (
-            <div className="w-full h-8/10 flex justify-center items-center border-2 rounded-md ">
+            <div className="w-full h-8/10 flex justify-center items-center border-2 border-text rounded-md ">
               <img
                 src={img}
                 alt={`image - ${title}`}
-                className="object-cover h-full w-full rounded-md"
+                className="object-cover h-full w-full rounded-sm"
               />
             </div>
           )}
@@ -34,7 +34,7 @@ const Card: React.FC<CardProps> = ({ recto, title, img, isFlipped, flipCard }) =
           </p>
         </div>
       ) : (
-        <div className="card-recto flex items-center justify-center h-full">
+        <div className="card-recto flex items-center justify-center h-full bg-card-background border-2 border-text rounded-md">
           <p className="text-xl font-bold uppercase">{recto}</p>
         </div>
       )}

@@ -6,6 +6,11 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        'background': '#000',
+        'text': '#d066fd',
+        'card-background': '#540a74',
+      },
       spacing: {
         '5vh': '5vh',
         '8vh': '8vh',
