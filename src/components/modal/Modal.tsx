@@ -37,8 +37,8 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-      <div className="bg-white p-5 rounded w-2/3">
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center">
+      <div className="bg-card-background p-5 rounded w-2/3 h-90vh overflow-y-auto">
         <h2 className="text-xl font-bold mb-4">Créer une nouvelle liste</h2>
         <div className="mb-4">
           <label className="block mb-1">Titre de la liste</label>
@@ -89,14 +89,14 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
             </div>
           </div>
         ))}
-        <button className="bg-blue-500 text-white py-2 px-4 rounded mb-4" onClick={addCard}>
+        <button className="bg-text text-card-background font-semibold py-2 px-4 rounded mb-4" onClick={addCard}>
           Ajouter une carte
         </button>
         <div className="flex justify-end">
-          <button className="bg-gray-300 text-black py-2 px-4 rounded mr-2" onClick={onClose}>
+          <button className="bg-background text-text py-2 px-4 rounded mr-2" onClick={onClose}>
             Annuler
           </button>
-          <button className="bg-green-500 text-white py-2 px-4 rounded" onClick={handleSubmit}>
+          <button className="bg-text  text-card-background font-bold py-2 px-4 rounded" onClick={handleSubmit}>
             Enregistrer la liste
           </button>
         </div>

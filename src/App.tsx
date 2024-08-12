@@ -152,7 +152,7 @@ function App() {
       />
 
       {message && (
-        <div className="message p-4 mb-4 text-center border-2 border-card-background rounded bg-background ">
+        <div className="message p-4 mb-4 mt-4 text-center border-2 border-card-background rounded bg-background ">
           <p>{message}</p>
         </div>
       )}
