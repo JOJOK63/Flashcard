@@ -98,6 +98,18 @@ function App() {
     }
   };
 
+  const downloadJson = (json: object, filename: string) => {
+    const jsonStr = JSON.stringify(json, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${filename}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const saveNewList = (newList: CardList) => {
     const maxId = lists.reduce((max, list) => {
       const listMaxId = list.cards.reduce((innerMax, card) => Math.max(innerMax, card.id), 0);
@@ -110,6 +122,9 @@ function App() {
     }));
 
     const updatedList = { ...newList, cards: newCardsWithIds };
+
+    // Téléchargement du fichier JSON
+    downloadJson(updatedList, updatedList.title);
 
     const updatedLists = [...lists, updatedList];
     setLists(updatedLists);
@@ -127,14 +142,13 @@ function App() {
         selectedList={selectedList}
         onListChange={handleListChange}
         onDeleteList={deleteList}
-        onSaveNewList={saveNewList} // Assurez-vous que cette prop est correctement définie
-        onAddNewList={() => setShowModal(true)}
+        onAddNewList={() => setShowModal(true)} // Assurez-vous que cela correspond à la prop dans Header
       />
 
       {showModal && (
         <Modal
           onClose={() => setShowModal(false)}
-          onSave={saveNewList}
+          onSave={saveNewList} // Correction ici pour passer saveNewList
         />
       )}
 

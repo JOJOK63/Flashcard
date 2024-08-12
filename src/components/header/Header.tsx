@@ -14,7 +14,7 @@ interface HeaderProps {
   selectedList: string;
   onListChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onDeleteList: () => void;
-  onSaveNewList: (list: CardList) => void; // Assurez-vous que cette prop est bien passée
+  onAddNewList: () => void; // Prop correcte ici
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -26,19 +26,13 @@ const Header: React.FC<HeaderProps> = ({
   selectedList,
   onListChange,
   onDeleteList,
-  onSaveNewList,
+  onAddNewList, // Assurez-vous que la prop correcte est utilisée
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const handleSaveList = (list: CardList) => {
-    onSaveNewList(list);
-  };
-
   return (
     <>
       <div className="header h-10vh p-5 border-2 rounded-md flex">
         <div className="w-1/5 flex justify-center items-center add">
-          <button className="w-10 h-10" onClick={() => setIsModalOpen(true)}>
+          <button className="w-10 h-10" onClick={onAddNewList}>
             <img src={addSvg} alt="icone add" />
           </button>
         </div>
@@ -90,7 +84,6 @@ const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
-      {isModalOpen && <Modal onClose={() => setIsModalOpen(false)} onSave={handleSaveList} />}
     </>
   );
 };
