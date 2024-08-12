@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import rerollSvg from '../../../public/refresh-line.svg';
 import addSvg from '../../../public/add-circle-line.svg';
 import deleteSvg from '../../../public/close-circle-line.svg';
-import Modal from '../modal/Modal';
 import { CardList } from '../../types';
 
 interface HeaderProps {
@@ -26,65 +25,63 @@ const Header: React.FC<HeaderProps> = ({
   selectedList,
   onListChange,
   onDeleteList,
-  onAddNewList, // Assurez-vous que la prop correcte est utilisée
+  onAddNewList,
 }) => {
   return (
-    <>
-      <div className="header h-10vh p-5 border-2 rounded-md flex">
-        <div className="w-1/5 flex justify-center items-center add">
-          <button className="w-10 h-10" onClick={onAddNewList}>
-            <img src={addSvg} alt="icone add" />
-          </button>
-        </div>
-        <div className="w-1/5 flex justify-center items-center uppercase relative">
-          <label htmlFor="list-choice">Choisissez une liste</label>
-          <select
-            name="list-choice"
-            id="list-choice"
-            className="uppercase ml-2"
-            value={selectedList}
-            onChange={onListChange}
-          >
-            {lists.map((list, index) => (
-              <option key={index} value={list.title}>
-                {list.title}
-              </option>
-            ))}
-          </select>
-          <button className=" w-10 h-10 ml-2" onClick={onDeleteList}>
-            <img src={deleteSvg} alt="Supprimer la liste" />
-          </button>
-        </div>
-        <div className="w-1/5 flex justify-center items-center">
-          RECTO / VERSO
-          <label className="switch ml-2">
-            <input
-              type="checkbox"
-              checked={showVerso}
-              onChange={onShowVersoChange}
-            />
-            <span className="slider round"></span>
-          </label>
-        </div>
-        <div className="w-1/5 flex justify-center items-center">
-          <label htmlFor="json-upload" className="cursor-pointer">
-            Importer un fichier JSON
-          </label>
-          <input
-            type="file"
-            id="json-upload"
-            className="hidden"
-            accept=".json"
-            onChange={onFileImport}
-          />
-        </div>
-        <div className="w-1/5 flex justify-center items-center refresh">
-          <button className="w-10 h-10" onClick={resetCards}>
-            <img src={rerollSvg} alt="icone reset" />
-          </button>
-        </div>
+    <div className="header h-10vh p-5 border-2 rounded-md flex">
+      <div className="w-1/5 flex justify-center items-center add">
+        <button className="w-10 h-10" onClick={onAddNewList}>
+          <img src={addSvg} alt="icone add" />
+        </button>
       </div>
-    </>
+      <div className="w-1/5 flex justify-center items-center uppercase relative">
+        <label htmlFor="list-choice">Choisissez une liste</label>
+        <select
+          name="list-choice"
+          id="list-choice"
+          className="uppercase ml-2"
+          value={selectedList}
+          onChange={onListChange}
+        >
+          {lists.map((list, index) => (
+            <option key={index} value={list.title}>
+              {list.title}
+            </option>
+          ))}
+        </select>
+        <button className=" w-10 h-10 ml-2" onClick={onDeleteList}>
+          <img src={deleteSvg} alt="Supprimer la liste" />
+        </button>
+      </div>
+      <div className="w-1/5 flex justify-center items-center">
+        RECTO / VERSO
+        <label className="switch ml-2">
+          <input
+            type="checkbox"
+            checked={showVerso}
+            onChange={onShowVersoChange}
+          />
+          <span className="slider round"></span>
+        </label>
+      </div>
+      <div className="w-1/5 flex justify-center items-center">
+        <label htmlFor="json-upload" className="cursor-pointer">
+          Importer un fichier JSON
+        </label>
+        <input
+          type="file"
+          id="json-upload"
+          className="hidden"
+          accept=".json"
+          onChange={onFileImport}
+        />
+      </div>
+      <div className="w-1/5 flex justify-center items-center refresh">
+        <button className="w-10 h-10" onClick={resetCards}>
+          <img src={rerollSvg} alt="icone reset" />
+        </button>
+      </div>
+    </div>
   );
 };
 

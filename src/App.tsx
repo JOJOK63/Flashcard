@@ -100,9 +100,9 @@ function App() {
 
   const downloadJson = (json: object, filename: string) => {
     const jsonStr = JSON.stringify(json, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
     link.download = `${filename}.json`;
     document.body.appendChild(link);
@@ -110,7 +110,7 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const saveNewList = (newList: CardList) => {
+  const saveNewList = (newList: { title: string; message?: string; cards: Omit<CardType, 'id'>[] }) => {
     const maxId = lists.reduce((max, list) => {
       const listMaxId = list.cards.reduce((innerMax, card) => Math.max(innerMax, card.id), 0);
       return Math.max(max, listMaxId);
@@ -121,7 +121,7 @@ function App() {
       id: maxId + index + 1, // Assigner des IDs uniques
     }));
 
-    const updatedList = { ...newList, cards: newCardsWithIds };
+    const updatedList: CardList = { title: newList.title, message: newList.message, cards: newCardsWithIds };
 
     // Téléchargement du fichier JSON
     downloadJson(updatedList, updatedList.title);
