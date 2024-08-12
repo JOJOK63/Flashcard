@@ -142,13 +142,13 @@ function App() {
         selectedList={selectedList}
         onListChange={handleListChange}
         onDeleteList={deleteList}
-        onAddNewList={() => setShowModal(true)} // Assurez-vous que cela correspond à la prop dans Header
+        onAddNewList={() => setShowModal(true)} 
       />
 
       {showModal && (
         <Modal
           onClose={() => setShowModal(false)}
-          onSave={saveNewList} // Correction ici pour passer saveNewList
+          onSave={saveNewList} 
         />
       )}
 
@@ -160,7 +160,7 @@ function App() {
             recto={card.recto}
             title={card.title}
             img={card.img}
-            isFlipped={card.isFlipped}
+            isFlipped={card.isFlipped || false}
             flipCard={() => flipCard(card.id)}
           />
         ))}
