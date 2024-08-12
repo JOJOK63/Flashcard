@@ -1,0 +1,18 @@
+{
+    "title": "copie",
+    "message": " 0 = S/Z/C[S]/T[S]/X[S], 1 = T/D, 2 = N/GN, 3 = M, 4 = R, 5 = L, 6 = H/CH/SCH/G[E], 7 = K/Q/G[U]/C[K], 8 = F/V/PH , 9 = BP ",
+    "cards": [
+   
+      {
+        "id": "90",
+        "title": "poisson",
+        "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNmBybDaLpRbTU9UKaMvdmkEG2OP4wEfn7dpwy_GzBTmIVrIyTOse3F0nrc8uBh3jQBCg&usqp=CAU"
+      },
+      {
+        "id": "91",
+        "title": "bâton",
+        "img": "https://buttinette.scene7.com/is/image/Buttinette/80096?hei=470&fmt=jpg&qlt=60"
+      }
+    ]
+  }
+  
