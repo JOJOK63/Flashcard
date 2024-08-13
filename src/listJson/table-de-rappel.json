@@ -1,16 +1,16 @@
 {
   "title": "Table de rappel",
   "message": [
-    { "text": "0 = S/Z/C[S]/T[S]/X[S]", "color": "#FF0000" },
-    { "text": "1 = T/D", "color": "#00FF00" },
-    { "text": "2 = N/GN", "color": "#0000FF" },
-    { "text": "3 = M", "color": "#FF00FF" },
-    { "text": "4 = R", "color": "#FFFF00" },
-    { "text": "5 = L", "color": "#00FFFF" },
-    { "text": "6 = H/CH/SCH/G[E]", "color": "#FFA500" },
-    { "text": "7 = K/Q/G[U]/C[K]", "color": "#800080" },
-    { "text": "8 = F/V/PH", "color": "#A52A2A" },
-    { "text": "9 = BP", "color": "#008000" }
+    { "text": "0 = S/Z/C[S]/T[S]/X[S]", "color": "#ff4545" },
+    { "text": "1 = T/D", "color": "#fa2a92" },
+    { "text": "2 = N/GN", "color": "#d400ff" },
+    { "text": "3 = M", "color": "#520afa" },
+    { "text": "4 = R", "color": "#4dccfa" },
+    { "text": "5 = L", "color": "#00bf50" },
+    { "text": "6 = H/CH/SCH/G[E]", "color": "#97fa50" },
+    { "text": "7 = K/Q/G[U]/C[K]", "color": "#ebff14" },
+    { "text": "8 = F/V/PH", "color": "#fcbd28" },
+    { "text": "9 = BP", "color": "#a85100" }
   ],
   "cards": [
     {
