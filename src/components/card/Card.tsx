@@ -22,6 +22,7 @@ const Card: React.FC<CardProps> = ({ recto, title, img, isFlipped, flipCard }) =
               <img
                 src={img}
                 alt={`image - ${title}`}
+
                 className="object-cover h-full w-full rounded-sm"
               />
             </div>

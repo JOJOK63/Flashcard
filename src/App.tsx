@@ -152,10 +152,19 @@ function App() {
       />
 
       {message && (
-        <div className="message p-4 mb-4 mt-4 text-center border-2 border-card-background rounded bg-background ">
-          <p>{message}</p>
+        <div className="message p-4 mb-4 mt-4 text-center border-2 border-card-background rounded bg-background">
+          {Array.isArray(message) ? (
+            message.map((msg, index) => (
+              <p key={index} style={{ color: msg.color }}>
+                {msg.text}
+              </p>
+            ))
+          ) : (
+            <p>{message}</p> // Si c'est une chaîne de caractères simple
+          )}
         </div>
       )}
+
 
       {showModal && (
         <Modal
