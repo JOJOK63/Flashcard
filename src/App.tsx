@@ -152,7 +152,7 @@ function App() {
       />
 
       {message && (
-        <div className="message p-4 mb-4 mt-4 text-center border-2 border-card-background rounded bg-background">
+        <div className="message flex text-center justify-around border-2 border-card-background rounded bg-background">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p key={index} style={{ color: msg.color }}>
@@ -186,6 +186,7 @@ function App() {
           />
         ))}
       </div>
+      
     </>
   );
 }
