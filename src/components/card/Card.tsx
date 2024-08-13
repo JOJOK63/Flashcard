@@ -12,7 +12,7 @@ interface CardProps {
 const Card: React.FC<CardProps> = ({ recto, title, img, isFlipped, flipCard }) => {
   return (
     <div
-      className="card max-w-25 max-h-40 h-40 w-full bg-card-background border-4 border-card-background"
+      className="card max-w-25 max-h-40 h-40 w-full bg-card-background border-4 border-card-background cursor-pointer"
       onClick={flipCard}
     >
       {isFlipped ? (
