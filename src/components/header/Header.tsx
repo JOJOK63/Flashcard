@@ -1,8 +1,8 @@
-import React from 'react';
-import rerollSvg from '../../../public/refresh-line(1).svg';
-import addSvg from '../../../public/add-circle-line(1).svg';
-import deleteSvg from '../../../public/close-circle-line(1).svg';
-import { CardList } from '../../types';
+import React from "react";
+import rerollSvg from "../../../public/refresh-line(1).svg";
+import addSvg from "../../../public/add-circle-line(1).svg";
+import deleteSvg from "../../../public/close-circle-line(1).svg";
+import { CardList } from "../../types";
 
 interface HeaderProps {
   resetCards: () => void;
@@ -14,6 +14,10 @@ interface HeaderProps {
   onListChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   onDeleteList: () => void;
   onAddNewList: () => void;
+  isShuffled: boolean;
+  toggleShuffle: () => void;
+  selectedRange: string;
+  onRangeChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -26,12 +30,20 @@ const Header: React.FC<HeaderProps> = ({
   onListChange,
   onDeleteList,
   onAddNewList,
+  isShuffled,
+  toggleShuffle,
+  selectedRange,
+  onRangeChange,
 }) => {
   return (
     <div className="header h-10vh p-5 border-2 rounded-md border-card-background flex justify-around">
       <div className="w-1/10 flex justify-center items-center relative">
         <button className="w-10 h-10 relative group" onClick={onAddNewList}>
-          <img src={addSvg} alt="icone add" className='fill-current text-card-background'/>
+          <img
+            src={addSvg}
+            alt="icone add"
+            className="fill-current text-card-background"
+          />
           <span className="absolute top-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Ajouter liste
           </span>
@@ -53,7 +65,10 @@ const Header: React.FC<HeaderProps> = ({
           ))}
         </select>
         <div className="relative">
-          <button className="w-10 h-10 ml-2 relative group" onClick={onDeleteList}>
+          <button
+            className="w-10 h-10 ml-2 relative group"
+            onClick={onDeleteList}
+          >
             <img src={deleteSvg} alt="Supprimer la liste" />
             <span className="absolute top-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               Supprimer liste
@@ -67,11 +82,45 @@ const Header: React.FC<HeaderProps> = ({
           <input
             type="checkbox"
             checked={showVerso}
-            onChange={onShowVersoChange} 
+            onChange={onShowVersoChange}
           />
           <span className="slider round bg-card-background"></span>
         </label>
       </div>
+      <div className="w-1/10 flex justify-center items-center">
+        <label className="mr-2">Mélanger</label>
+        <label className="switch ml-2">
+          <input
+            type="checkbox"
+            checked={isShuffled}
+            onChange={toggleShuffle}
+          />
+          <span className="slider round bg-card-background"></span>
+        </label>
+      </div>
+      <div className="w-1/5 flex justify-center items-center">
+        <label htmlFor="range-choice" className="mr-2">
+          Plage d’ID
+        </label>
+        <select
+          id="range-choice"
+          value={selectedRange}
+          onChange={onRangeChange}
+          className="uppercase p-2 bg-background border-2 border-card-background"
+        >
+          <option value="all">Toutes</option>
+          {Array.from({ length: 10 }, (_, i) => {
+            const start = i * 10;
+            const end = start + 9;
+            return (
+              <option key={i} value={`${start}-${end}`}>
+                {start}–{end}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
       <div className="w-1/10 flex justify-center items-center p-2 border-2 bg-card-background border-text">
         <label htmlFor="json-upload" className="cursor-pointer">
           Importer un fichier JSON

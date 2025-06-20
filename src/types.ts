@@ -4,11 +4,13 @@ export interface CardType {
     title: string; // Titre du verso
     img?: string; // Image du verso, optionnelle
     isFlipped?: boolean; // Optionnel car il peut être ajouté dynamiquement
+    color: string; 
   }
   
   export interface CardList {
     title: string;
     message?: string; // Optionnel
     cards: CardType[]; // Liste des cartes
+   
   }
   

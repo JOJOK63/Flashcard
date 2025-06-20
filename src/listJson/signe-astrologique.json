@@ -1,0 +1,90 @@
+{
+  "title": "Signe astrologique",
+  "message": "",
+  "cards": [
+    {
+      "recto": "Bélier",
+      "title": "21 mars – 19 avril",
+      "img": "https://www.svgrepo.com/show/535144/aries.svg",
+      "id": 1,
+      "color": "#ff0000"
+    },
+    {
+      "recto": "Taureau",
+      "title": "20 avril – 20 mai",
+      "img": "https://www.svgrepo.com/show/535682/taurus.svg",
+      "id": 2,
+      "color": "#854e31"
+    },
+    {
+      "recto": "Gémeaux",
+      "title": "21 mai – 21 juin",
+      "img": "https://www.svgrepo.com/show/535412/gemini.svg",
+      "id": 3,
+      "color": "#59c2f7"
+    },
+    {
+      "recto": "Cancer",
+      "title": "22 juin – 22 juillet",
+      "img": "https://www.svgrepo.com/show/535247/cancer.svg",
+      "id": 4,
+      "color": "#2149fc"
+    },
+    {
+      "recto": "Lion",
+      "title": "23 juillet – 22 août",
+      "img": "https://www.svgrepo.com/show/535475/leo.svg",
+      "id": 5,
+      "color": "#ff0000"
+    },
+    {
+      "recto": "Vierge",
+      "title": "23 août – 22 septembre",
+      "img": "https://www.svgrepo.com/show/535724/virgo.svg",
+      "id": 6,
+      "color": "#854e31"
+    },
+    {
+      "recto": "Balance",
+      "title": "23 septembre – 23 octobre",
+      "img": "https://www.svgrepo.com/show/154991/libra-sign.svg",
+      "id": 7,
+      "color": "#59c2f7"
+    },
+    {
+      "recto": "Scorpion",
+      "title": "24 octobre – 22 novembre",
+      "img": "https://www.svgrepo.com/show/535613/scorpio.svg",
+      "id": 8,
+      "color": "#2149fc"
+    },
+    {
+      "recto": "Sagittaire",
+      "title": "23 novembre – 22 décembre",
+      "img": "https://www.svgrepo.com/show/535609/sagittarius.svg",
+      "id": 9,
+      "color": "#ff0000"
+    },
+    {
+      "recto": "Capricorne",
+      "title": "23 décembre – 20 janvier",
+      "img": "https://www.svgrepo.com/show/535252/capricorn.svg",
+      "id": 10,
+      "color": "#854e31"
+    },
+    {
+      "recto": "Verseau",
+      "title": "21 janvier – 19 février",
+      "img": "https://www.svgrepo.com/show/499472/aquarius.svg",
+      "id": 11,
+      "color": "#59c2f7"
+    },
+    {
+      "recto": "Poissons",
+      "title": "20 février - 20 mars",
+      "img": "https://www.svgrepo.com/show/445177/horoscope-pisces-solid.svg",
+      "id": 12,
+      "color": "#2149fc"
+    }
+  ]
+}

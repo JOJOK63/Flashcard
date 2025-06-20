@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
-import Card from './components/card/Card';
-import Header from './components/header/Header';
-import Modal from './components/modal/Modal';
-import { CardType, CardList } from './types';
+import React, { useState, useEffect } from "react";
+import "./App.css";
+import Card from "./components/card/Card";
+import Header from "./components/header/Header";
+import Modal from "./components/modal/Modal";
+import { CardType, CardList } from "./types";
 
 function App() {
   const [showVerso, setShowVerso] = useState<boolean>(false);
   const [cards, setCards] = useState<CardType[]>([]);
   const [lists, setLists] = useState<CardList[]>([]);
-  const [selectedList, setSelectedList] = useState<string>('');
+  const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
   const [message, setMessage] = useState<string | undefined>(undefined); // Ajout de l'état message
+  const [isShuffled, setIsShuffled] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<string>("all");
 
   useEffect(() => {
-    const storedLists: CardList[] = JSON.parse(localStorage.getItem('cardLists') || '[]');
+    const storedLists: CardList[] = JSON.parse(
+      localStorage.getItem("cardLists") || "[]"
+    );
     setLists(storedLists);
     if (storedLists.length > 0) {
       setSelectedList(storedLists[0].title);
@@ -22,6 +26,7 @@ function App() {
         storedLists[0].cards.map((card) => ({
           ...card,
           isFlipped: showVerso,
+          color: card.color || "",
         }))
       );
       setMessage(storedLists[0].message); // Initialiser le message
@@ -30,17 +35,25 @@ function App() {
 
   useEffect(() => {
     if (selectedList) {
-      const selectedListObject = lists.find((list) => list.title === selectedList);
-      const selectedCards = selectedListObject?.cards || [];
+      const selectedListObject = lists.find(
+        (list) => list.title === selectedList
+      );
+      let selectedCards = selectedListObject?.cards || [];
+
+      if (isShuffled) {
+        selectedCards = shuffleArray(selectedCards);
+      }
+
       setCards(
         selectedCards.map((card) => ({
           ...card,
           isFlipped: showVerso,
+          color: card.color || "",
         }))
       );
-      setMessage(selectedListObject?.message); // Mettre à jour le message lors de la sélection
+      setMessage(selectedListObject?.message);
     }
-  }, [showVerso, selectedList, lists]);
+  }, [showVerso, selectedList, lists, isShuffled]); // <- ajout de isShuffled
 
   const resetCards = () => {
     setCards(cards.map((card) => ({ ...card, isFlipped: showVerso })));
@@ -48,7 +61,9 @@ function App() {
 
   const flipCard = (id: number) => {
     setCards(
-      cards.map((card) => (card.id === id ? { ...card, isFlipped: !card.isFlipped } : card))
+      cards.map((card) =>
+        card.id === id ? { ...card, isFlipped: !card.isFlipped } : card
+      )
     );
   };
 
@@ -66,12 +81,12 @@ function App() {
           if (json.title && json.cards) {
             const updatedLists = [...lists, json];
             setLists(updatedLists);
-            localStorage.setItem('cardLists', JSON.stringify(updatedLists));
+            localStorage.setItem("cardLists", JSON.stringify(updatedLists));
           } else {
-            alert('Fichier JSON invalide.');
+            alert("Fichier JSON invalide.");
           }
         } catch (error) {
-          alert('Erreur lors de la lecture du fichier JSON.');
+          alert("Erreur lors de la lecture du fichier JSON.");
         }
       };
       reader.readAsText(file);
@@ -86,7 +101,7 @@ function App() {
     if (selectedList) {
       const updatedLists = lists.filter((list) => list.title !== selectedList);
       setLists(updatedLists);
-      localStorage.setItem('cardLists', JSON.stringify(updatedLists));
+      localStorage.setItem("cardLists", JSON.stringify(updatedLists));
       if (updatedLists.length > 0) {
         setSelectedList(updatedLists[0].title);
         setCards(
@@ -97,7 +112,7 @@ function App() {
         );
         setMessage(updatedLists[0].message); // Mettre à jour le message lors de la suppression
       } else {
-        setSelectedList('');
+        setSelectedList("");
         setCards([]);
         setMessage(undefined); // Effacer le message s'il n'y a plus de listes
       }
@@ -106,9 +121,9 @@ function App() {
 
   const downloadJson = (json: object, filename: string) => {
     const jsonStr = JSON.stringify(json, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = `${filename}.json`;
     document.body.appendChild(link);
@@ -116,9 +131,16 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const saveNewList = (newList: { title: string; message?: string; cards: Omit<CardType, 'id'>[] }) => {
+  const saveNewList = (newList: {
+    title: string;
+    message?: string;
+    cards: Omit<CardType, "id">[];
+  }) => {
     const maxId = lists.reduce((max, list) => {
-      const listMaxId = list.cards.reduce((innerMax, card) => Math.max(innerMax, card.id), 0);
+      const listMaxId = list.cards.reduce(
+        (innerMax, card) => Math.max(innerMax, card.id),
+        0
+      );
       return Math.max(max, listMaxId);
     }, 0);
 
@@ -127,15 +149,55 @@ function App() {
       id: maxId + index + 1, // Assigner des IDs uniques
     }));
 
-    const updatedList: CardList = { title: newList.title, message: newList.message, cards: newCardsWithIds };
+    const updatedList: CardList = {
+      title: newList.title,
+      message: newList.message,
+      cards: newCardsWithIds,
+    };
 
     // Téléchargement du fichier JSON
     downloadJson(updatedList, updatedList.title);
 
     const updatedLists = [...lists, updatedList];
     setLists(updatedLists);
-    localStorage.setItem('cardLists', JSON.stringify(updatedLists));
+    localStorage.setItem("cardLists", JSON.stringify(updatedLists));
   };
+
+  const shuffleArray = (array: CardType[]) => {
+    return [...array].sort(() => Math.random() - 0.5);
+  };
+
+  const toggleShuffle = () => {
+    setIsShuffled((prev) => !prev);
+  };
+
+  const getFilteredCards = () => {
+    if (selectedRange === "all") return cards;
+    const [start, end] = selectedRange.split("-").map(Number);
+    return cards.filter((card) => card.id >= start && card.id <= end);
+  };
+
+  useEffect(() => {
+    fetch("/table-de-rappel.json")
+      .then((res) => res.json())
+      .then((data: CardList) => {
+        // Vérifie qu'on ne l'a pas déjà ajoutée
+        const isAlreadyPresent = lists.some(
+          (list) => list.title === data.title
+        );
+        if (!isAlreadyPresent) {
+          const updatedLists = [...lists, data];
+          setLists(updatedLists);
+          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur lors du chargement de la table de rappel :",
+          error
+        );
+      });
+  }, [lists]);
 
   return (
     <>
@@ -148,14 +210,27 @@ function App() {
         selectedList={selectedList}
         onListChange={handleListChange}
         onDeleteList={deleteList}
-        onAddNewList={() => setShowModal(true)} 
+        onAddNewList={() => setShowModal(true)}
+        isShuffled={isShuffled}
+        toggleShuffle={toggleShuffle}
+        selectedRange={selectedRange}
+        onRangeChange={(e) => setSelectedRange(e.target.value)}
       />
 
       {message && (
-        <div className="message flex text-center justify-around border-2 border-card-background rounded bg-background">
+        <div className="message flex text-center justify-around border-2  rounded-lg w-3/4 m-auto mt-10">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
-              <p key={index} style={{ color: msg.color }}>
+              <p
+                key={index}
+                style={{
+                  background: msg.color,
+                  opacity: 0.8,
+                  padding: 4,
+                  borderRadius: 10,
+                  color: "black",
+                }}
+              >
                 {msg.text}
               </p>
             ))
@@ -165,16 +240,12 @@ function App() {
         </div>
       )}
 
-
       {showModal && (
-        <Modal
-          onClose={() => setShowModal(false)}
-          onSave={saveNewList} 
-        />
+        <Modal onClose={() => setShowModal(false)} onSave={saveNewList} />
       )}
 
-      <div className="main w-full h-auto p-10 grid grid-cols-10 gap-5 ">
-        {cards.map((card) => (
+      <div className="main w-4/5 m-auto grid grid-cols-2 gap-5  md:w-full md:h-auto md:gap-10 md:grid md:grid-cols-10 md:p-2">
+        {getFilteredCards().map((card) => (
           <Card
             key={card.id}
             id={card.id}
@@ -183,10 +254,10 @@ function App() {
             img={card.img}
             isFlipped={card.isFlipped || false}
             flipCard={() => flipCard(card.id)}
+            color={card.color}
           />
         ))}
       </div>
-      
     </>
   );
 }
