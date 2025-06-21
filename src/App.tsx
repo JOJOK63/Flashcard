@@ -14,6 +14,8 @@ function App() {
   const [message, setMessage] = useState<string | undefined>(undefined); // Ajout de l'état message
   const [isShuffled, setIsShuffled] = useState(false);
   const [selectedRange, setSelectedRange] = useState<string>("all");
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const storedLists: CardList[] = JSON.parse(
@@ -199,6 +201,14 @@ function App() {
       });
   }, [lists]);
 
+  useEffect(() => {
+    const checkSize = () => setIsMobile(window.innerWidth < 768);
+    checkSize();
+    window.addEventListener("resize", checkSize);
+  }, []);
+
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+
   return (
     <>
       <Header
@@ -215,10 +225,13 @@ function App() {
         toggleShuffle={toggleShuffle}
         selectedRange={selectedRange}
         onRangeChange={(e) => setSelectedRange(e.target.value)}
+        isMobile={isMobile}
+        isMobileMenuOpen={isMobileMenuOpen}
+        toggleMobileMenu={toggleMobileMenu}
       />
 
       {message && (
-        <div className="message flex flex-col text-center gap-2 md:flex-row md:justify-around md:items-center border-2  rounded-lg w-3/4 m-auto mt-10">
+        <div className="message mt-16 flex flex-col text-center gap-2 md:flex-row md:justify-around md:items-center border-2  rounded-lg w-3/4 m-auto p-2">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p
@@ -227,7 +240,7 @@ function App() {
                   background: msg.color,
                   opacity: 0.8,
                   padding: 4,
-                  borderRadius: 10,
+                  borderRadius: 8,
                   color: "black",
                 }}
               >
@@ -244,7 +257,7 @@ function App() {
         <Modal onClose={() => setShowModal(false)} onSave={saveNewList} />
       )}
 
-      <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-10 lg:px-40 lg:my-10">
+      <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-16 lg:px-40 lg:my-10">
         {getFilteredCards().map((card) => (
           <Card
             key={card.id}

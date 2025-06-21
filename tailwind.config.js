@@ -5,7 +5,7 @@ export default {
     extend: {
       colors: {
         background: "#fff",
-        text: "#ffffff",
+        textColor: "var(--text-color)",
         cardBackground: "#fff",
         white: "#FFF",
       },
