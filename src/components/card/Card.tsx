@@ -20,43 +20,43 @@ const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`card min-w-24  h-24 w-full border-2 cursor-pointer 
-    `}
+      className={`card w-full min-w-20 max-w-36 aspect-[3/4] border-2 cursor-pointer
+  transition-all duration-200 hover:scale-105 rounded-lg overflow-hidden
+  sm:max-w-34 md:max-w-28 lg:max-w-28 xl:max-w-44`}
       style={{
         borderColor: color || "var(--text-color)",
       }}
       onClick={flipCard}
     >
       {isFlipped ? (
-        <div className="card-verso flex flex-col items-center justify-between h-full">
+        <div className="card-verso flex flex-col h-full p-2">
           {img && (
-            <div className="w-full h-8/10 flex justify-center items-center  rounded-md ">
+            <div className="flex-1 flex justify-center items-center rounded-md overflow-hidden">
               <img
                 src={img}
                 alt={`image - ${title}`}
-                className="object-cover h-full w-full rounded-xl p-2"
+                className="object-cover w-full h-full rounded-lg"
               />
             </div>
           )}
-          <p
-            className="w-full h-2/10 flex justify-center items-center 
-          text-xs uppercase font-bold"
-          >
-            {title.split("–").map((part, idx) => (
-              <span key={idx}>
-                {part.trim()}
-                <br />
-              </span>
-            ))}
-          </p>
+          <div className="flex-shrink-0 mt-2 text-center">
+            <p className="text-xs uppercase font-bold leading-tight">
+              {title.split("–").map((part, idx) => (
+                <span key={idx} className="block">
+                  {part.trim()}
+                </span>
+              ))}
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="card-recto flex items-center justify-center h-full  rounded-md">
-          <p className="text-md font-bold uppercase">{recto} </p>
+        <div className="card-recto flex items-center justify-center h-full p-2 rounded-md">
+          <p className="text-sm font-bold uppercase text-center leading-tight">
+            {recto}
+          </p>
         </div>
       )}
     </div>
   );
 };
-
 export default Card;

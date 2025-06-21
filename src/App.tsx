@@ -218,7 +218,7 @@ function App() {
       />
 
       {message && (
-        <div className="message flex text-center justify-around border-2  rounded-lg w-3/4 m-auto mt-10">
+        <div className="message flex flex-col text-center gap-2 md:flex-row md:justify-around md:items-center border-2  rounded-lg w-3/4 m-auto mt-10">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p
@@ -244,7 +244,7 @@ function App() {
         <Modal onClose={() => setShowModal(false)} onSave={saveNewList} />
       )}
 
-      <div className="main w-4/5 m-auto grid grid-cols-2 gap-5  md:w-full md:h-auto md:gap-10 md:grid md:grid-cols-10 md:p-2">
+      <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-10 lg:px-40 lg:my-10">
         {getFilteredCards().map((card) => (
           <Card
             key={card.id}
