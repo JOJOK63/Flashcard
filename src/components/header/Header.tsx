@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import rerollSvg from "../../../public/refresh-line(1).svg";
 import addSvg from "../../../public/add-circle-line(1).svg";
 import deleteSvg from "../../../public/close-circle-line(1).svg";
@@ -35,102 +35,72 @@ const Header: React.FC<HeaderProps> = ({
   onAddNewList,
   isShuffled,
   toggleShuffle,
-  selectedRange,
   onRangeChange,
   isMobile,
   isMobileMenuOpen,
   toggleMobileMenu,
 }) => {
-  // États locaux pour les inputs de plage
   const [startRange, setStartRange] = useState<string>("");
   const [endRange, setEndRange] = useState<string>("");
 
-  // Initialiser les valeurs depuis selectedRange
-  useEffect(() => {
-    if (selectedRange === "all") {
-      setStartRange("");
-      setEndRange("");
-    } else if (selectedRange.includes("-")) {
-      const [start, end] = selectedRange.split("-");
-      setStartRange(start);
-      setEndRange(end === "infinity" ? "" : end);
-    }
-  }, [selectedRange]);
-
-  // FONCTION : Valider que l'input ne contient que des chiffres entiers
-  const validateNumericInput = (value: string): string => {
-    // Supprime tout ce qui n'est pas un chiffre
-    return value.replace(/[^0-9]/g, "");
-  };
-
-  // FONCTION PRINCIPALE : Gérer les changements de plage
-  const handleRangeUpdate = (start: string, end: string) => {
-    console.log(
-      `🔧 handleRangeUpdate appelé avec start="${start}", end="${end}"`
-    );
-
-    // CAS 1 : Les deux champs vides → Afficher toutes les cartes
+  // Fonction pour valider et mettre à jour la plage
+  const updateRange = (start: string, end: string) => {
+    // Cas 1: Rien saisi → Afficher toutes les cartes
     if (!start && !end) {
-      console.log(`🔧 Cas 1: Tous les champs vides → "all"`);
       onRangeChange("all");
       return;
     }
 
-    // CAS 2 : Seulement "start" rempli → Afficher start et plus
+    // Cas 2: Seulement start saisi → Afficher cartes >= start
     if (start && !end) {
-      console.log(`🔧 Cas 2: Seulement start="${start}" → "${start}-infinity"`);
-      onRangeChange(`${start}-infinity`);
+      const startNum = parseInt(start);
+      if (!isNaN(startNum)) {
+        onRangeChange(`${startNum}-`);
+      } else {
+        onRangeChange("all"); // Erreur → afficher tout
+      }
       return;
     }
 
-    // CAS 3 : Seulement "end" rempli → Afficher 1 à end
+    // Cas 3: Seulement end saisi → Afficher cartes <= end
     if (!start && end) {
-      console.log(`🔧 Cas 3: Seulement end="${end}" → "1-${end}"`);
-      onRangeChange(`0-${end}`);
+      const endNum = parseInt(end);
+      if (!isNaN(endNum)) {
+        onRangeChange(`-${endNum}`);
+      } else {
+        onRangeChange("all"); // Erreur → afficher tout
+      }
       return;
     }
 
-    // CAS 4 : Les deux champs remplis → Afficher entre les deux
+    // Cas 4: Les deux saisis → Afficher cartes entre start et end
     if (start && end) {
       const startNum = parseInt(start);
       const endNum = parseInt(end);
 
-      // ✅ AJOUT : Vérification de validité
-      if (isNaN(startNum) || isNaN(endNum)) {
-        console.error(
-          `❌ Valeurs invalides: start="${start}"(${startNum}), end="${end}"(${endNum})`
-        );
-        onRangeChange("all"); // Fallback sécurisé
-        return;
+      if (!isNaN(startNum) && !isNaN(endNum)) {
+        // Assurer que start <= end
+        const min = Math.min(startNum, endNum);
+        const max = Math.max(startNum, endNum);
+        onRangeChange(`${min}-${max}`);
+      } else {
+        onRangeChange("all"); // Erreur → afficher tout
       }
-
-      console.log(
-        `🔧 Cas 4: start="${start}", end="${end}" → "${startNum}-${endNum}"`
-      );
-      onRangeChange(`${startNum}-${endNum}`);
     }
   };
 
-  // FONCTION : Gérer le changement du champ "De" avec validation
   const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const validatedValue = validateNumericInput(rawValue); // Ne garde que les chiffres
-
-    setStartRange(validatedValue); // Met à jour l'affichage avec la valeur nettoyée
-    handleRangeUpdate(validatedValue, endRange); // Applique la logique de plage
+    const value = e.target.value.replace(/[^0-9]/g, ""); // Garde seulement les chiffres
+    setStartRange(value);
+    updateRange(value, endRange);
   };
 
-  // FONCTION : Gérer le changement du champ "À" avec validation
   const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    console.log("ceci est :" + rawValue);
-    const validatedValue = validateNumericInput(rawValue); // Ne garde que les chiffres
-
-    setEndRange(validatedValue); // Met à jour l'affichage avec la valeur nettoyée
-    handleRangeUpdate(startRange, validatedValue); // Applique la logique de plage
+    const value = e.target.value.replace(/[^0-9]/g, ""); // Garde seulement les chiffres
+    setEndRange(value);
+    updateRange(startRange, value);
   };
 
-  // FONCTION : Reset de la plage
   const resetRange = () => {
     setStartRange("");
     setEndRange("");
@@ -173,7 +143,10 @@ const Header: React.FC<HeaderProps> = ({
             id="list-choice"
             className="uppercase ml-2 p-2 bg-background border-2 border-textColor rounded-lg"
             value={selectedList}
-            onChange={onListChange}
+            onChange={(e) => {
+              onListChange(e);
+              resetRange();
+            }}
           >
             {lists.map((list, index) => (
               <option key={index} value={list.title}>
@@ -219,7 +192,7 @@ const Header: React.FC<HeaderProps> = ({
           </label>
         </div>
 
-        {/* Section pour la sélection de plage avec gestion d'erreur */}
+        {/* Section plage simplifiée */}
         <div className="flex items-center gap-2">
           <label className="uppercase text-sm">Plage :</label>
           <input
@@ -271,7 +244,6 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div>
-          {/* Bouton fermer (seulement mobile ouvert) */}
           {isMobile && isMobileMenuOpen && (
             <button onClick={toggleMobileMenu} className="text-3xl font-bold">
               ✕

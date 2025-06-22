@@ -22,17 +22,66 @@ function App() {
       localStorage.getItem("cardLists") || "[]"
     );
     setLists(storedLists);
-    if (storedLists.length > 0) {
-      setSelectedList(storedLists[0].title);
-      setCards(
-        storedLists[0].cards.map((card) => ({
-          ...card,
-          isFlipped: showVerso,
-          color: card.color || "",
-        }))
-      );
-      setMessage(storedLists[0].message);
-    }
+
+    // Charger la table de rappel par défaut si elle n'existe pas
+    fetch("/table-de-rappel.json")
+      .then((res) => res.json())
+      .then((data: CardList) => {
+        const isAlreadyPresent = storedLists.some(
+          (list) => list.title === data.title
+        );
+
+        if (!isAlreadyPresent) {
+          const updatedLists = [...storedLists, data];
+          setLists(updatedLists);
+          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+
+          // Si c'était la première liste, la sélectionner
+          if (storedLists.length === 0) {
+            setSelectedList(data.title);
+            setCards(
+              data.cards.map((card) => ({
+                ...card,
+                isFlipped: showVerso,
+                color: card.color || "",
+              }))
+            );
+            setMessage(data.message);
+          }
+        } else {
+          // Si les listes existent déjà, sélectionner la première
+          if (storedLists.length > 0) {
+            setSelectedList(storedLists[0].title);
+            setCards(
+              storedLists[0].cards.map((card) => ({
+                ...card,
+                isFlipped: showVerso,
+                color: card.color || "",
+              }))
+            );
+            setMessage(storedLists[0].message);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur lors du chargement de la table de rappel :",
+          error
+        );
+
+        // En cas d'erreur, utiliser les listes existantes
+        if (storedLists.length > 0) {
+          setSelectedList(storedLists[0].title);
+          setCards(
+            storedLists[0].cards.map((card) => ({
+              ...card,
+              isFlipped: showVerso,
+              color: card.color || "",
+            }))
+          );
+          setMessage(storedLists[0].message);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -182,101 +231,41 @@ function App() {
   // Dans App.tsx - Remplace ta fonction getFilteredCards par celle-ci :
 
   const getFilteredCards = () => {
-    console.log(`🎯 Filtrage avec selectedRange: "${selectedRange}"`);
-
+    // Cas 1: Afficher toutes les cartes
     if (selectedRange === "all") {
-      console.log(`📋 Affichage de toutes les cartes (${cards.length})`);
       return cards;
     }
 
-    // CAS SPÉCIAL : "25-infinity" = carte 25 et supérieur
-    if (selectedRange.endsWith("-infinity")) {
-      const start = parseInt(selectedRange.replace("-infinity", ""));
-      console.log(`📈 Filtrage: cartes >= ${start}`);
-
-      if (isNaN(start)) {
-        console.error(
-          "❌ Start invalide pour -infinity, affichage de toutes les cartes"
-        );
-        return cards;
-      }
-
-      const filtered = cards.filter((card) => card.id >= start);
-      console.log(`✅ ${filtered.length} cartes trouvées (>= ${start})`);
-      return filtered;
+    // Cas 2: Seulement start (format: "25-")
+    if (selectedRange.endsWith("-") && !selectedRange.startsWith("-")) {
+      const start = parseInt(selectedRange.replace("-", ""));
+      return cards.filter((card) => card.id >= start);
     }
 
-    // CAS PLAGE NORMALE : "0-50", "25-75", etc.
-    if (selectedRange.includes("-")) {
+    // Cas 3: Seulement end (format: "-50")
+    if (selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
+      const end = parseInt(selectedRange.replace("-", ""));
+      return cards.filter((card) => card.id <= end);
+    }
+
+    // Cas 4: Start et end (format: "25-50")
+    if (
+      selectedRange.includes("-") &&
+      !selectedRange.startsWith("-") &&
+      !selectedRange.endsWith("-")
+    ) {
       const [startStr, endStr] = selectedRange.split("-");
+      const start = parseInt(startStr);
+      const end = parseInt(endStr);
 
-      // ✅ NOUVEAU : Gérer les cas où start ou end peuvent être vides
-      const start = startStr ? parseInt(startStr) : null;
-      const end = endStr ? parseInt(endStr) : null;
-
-      console.log(`📊 Parsing: "${startStr}" → ${start}, "${endStr}" → ${end}`);
-
-      // ✅ NOUVEAU : Cas où seulement start est défini (ex: "25-")
-      if (start !== null && end === null) {
-        console.log(`📈 Filtrage: cartes >= ${start} (end non défini)`);
-        const filtered = cards.filter((card) => card.id >= start);
-        console.log(`✅ ${filtered.length} cartes trouvées (>= ${start})`);
-        return filtered;
+      if (!isNaN(start) && !isNaN(end)) {
+        return cards.filter((card) => card.id >= start && card.id <= end);
       }
-
-      // ✅ NOUVEAU : Cas où seulement end est défini (ex: "-50")
-      if (start === null && end !== null) {
-        console.log(`📉 Filtrage: cartes <= ${end} (start non défini)`);
-        const filtered = cards.filter((card) => card.id <= end);
-        console.log(`✅ ${filtered.length} cartes trouvées (<= ${end})`);
-        return filtered;
-      }
-
-      // ✅ AMÉLIORER : Cas où les deux sont définis
-      if (start !== null && end !== null) {
-        const minValue = Math.min(start, end);
-        const maxValue = Math.max(start, end);
-
-        console.log(`📊 Filtrage: cartes entre ${minValue} et ${maxValue}`);
-
-        const filtered = cards.filter(
-          (card) => card.id >= minValue && card.id <= maxValue
-        );
-        console.log(
-          `✅ ${filtered.length} cartes trouvées (${minValue}-${maxValue})`
-        );
-        return filtered;
-      }
-
-      // ✅ NOUVEAU : Si on arrive ici, c'est qu'il y a eu un problème de parsing
-      console.error(`❌ Impossible de parser la plage: "${selectedRange}"`);
-      return cards;
     }
 
-    console.log(`📋 Cas par défaut: affichage de toutes les cartes`);
+    // En cas d'erreur, afficher toutes les cartes
     return cards;
   };
-
-  useEffect(() => {
-    fetch("/table-de-rappel.json")
-      .then((res) => res.json())
-      .then((data: CardList) => {
-        const isAlreadyPresent = lists.some(
-          (list) => list.title === data.title
-        );
-        if (!isAlreadyPresent) {
-          const updatedLists = [...lists, data];
-          setLists(updatedLists);
-          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Erreur lors du chargement de la table de rappel :",
-          error
-        );
-      });
-  }, [lists]);
 
   useEffect(() => {
     const checkSize = () => setIsMobile(window.innerWidth < 768);
