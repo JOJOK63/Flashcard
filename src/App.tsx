@@ -11,7 +11,7 @@ function App() {
   const [lists, setLists] = useState<CardList[]>([]);
   const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | undefined>(undefined); // Ajout de l'état message
+  const [message, setMessage] = useState<string | undefined>(undefined);
   const [isShuffled, setIsShuffled] = useState(false);
   const [selectedRange, setSelectedRange] = useState<string>("all");
   const [isMobile, setIsMobile] = useState(false);
@@ -31,7 +31,7 @@ function App() {
           color: card.color || "",
         }))
       );
-      setMessage(storedLists[0].message); // Initialiser le message
+      setMessage(storedLists[0].message);
     }
   }, []);
 
@@ -55,7 +55,7 @@ function App() {
       );
       setMessage(selectedListObject?.message);
     }
-  }, [showVerso, selectedList, lists, isShuffled]); // <- ajout de isShuffled
+  }, [showVerso, selectedList, lists, isShuffled, selectedRange]);
 
   const resetCards = () => {
     setCards(cards.map((card) => ({ ...card, isFlipped: showVerso })));
@@ -112,11 +112,11 @@ function App() {
             isFlipped: showVerso,
           }))
         );
-        setMessage(updatedLists[0].message); // Mettre à jour le message lors de la suppression
+        setMessage(updatedLists[0].message);
       } else {
         setSelectedList("");
         setCards([]);
-        setMessage(undefined); // Effacer le message s'il n'y a plus de listes
+        setMessage(undefined);
       }
     }
   };
@@ -148,7 +148,7 @@ function App() {
 
     const newCardsWithIds = newList.cards.map((card, index) => ({
       ...card,
-      id: maxId + index + 1, // Assigner des IDs uniques
+      id: maxId + index + 1,
     }));
 
     const updatedList: CardList = {
@@ -157,7 +157,6 @@ function App() {
       cards: newCardsWithIds,
     };
 
-    // Téléchargement du fichier JSON
     downloadJson(updatedList, updatedList.title);
 
     const updatedLists = [...lists, updatedList];
@@ -173,17 +172,95 @@ function App() {
     setIsShuffled((prev) => !prev);
   };
 
+  // FONCTION MODIFIÉE : Accepte maintenant une string directement
+  const handleRangeChange = (range: string) => {
+    setSelectedRange(range);
+  };
+
+  // FONCTION MODIFIÉE : Gérer tous les cas de filtrage (SANS NaN)
+
+  // Dans App.tsx - Remplace ta fonction getFilteredCards par celle-ci :
+
   const getFilteredCards = () => {
-    if (selectedRange === "all") return cards;
-    const [start, end] = selectedRange.split("-").map(Number);
-    return cards.filter((card) => card.id >= start && card.id <= end);
+    console.log(`🎯 Filtrage avec selectedRange: "${selectedRange}"`);
+
+    if (selectedRange === "all") {
+      console.log(`📋 Affichage de toutes les cartes (${cards.length})`);
+      return cards;
+    }
+
+    // CAS SPÉCIAL : "25-infinity" = carte 25 et supérieur
+    if (selectedRange.endsWith("-infinity")) {
+      const start = parseInt(selectedRange.replace("-infinity", ""));
+      console.log(`📈 Filtrage: cartes >= ${start}`);
+
+      if (isNaN(start)) {
+        console.error(
+          "❌ Start invalide pour -infinity, affichage de toutes les cartes"
+        );
+        return cards;
+      }
+
+      const filtered = cards.filter((card) => card.id >= start);
+      console.log(`✅ ${filtered.length} cartes trouvées (>= ${start})`);
+      return filtered;
+    }
+
+    // CAS PLAGE NORMALE : "0-50", "25-75", etc.
+    if (selectedRange.includes("-")) {
+      const [startStr, endStr] = selectedRange.split("-");
+
+      // ✅ NOUVEAU : Gérer les cas où start ou end peuvent être vides
+      const start = startStr ? parseInt(startStr) : null;
+      const end = endStr ? parseInt(endStr) : null;
+
+      console.log(`📊 Parsing: "${startStr}" → ${start}, "${endStr}" → ${end}`);
+
+      // ✅ NOUVEAU : Cas où seulement start est défini (ex: "25-")
+      if (start !== null && end === null) {
+        console.log(`📈 Filtrage: cartes >= ${start} (end non défini)`);
+        const filtered = cards.filter((card) => card.id >= start);
+        console.log(`✅ ${filtered.length} cartes trouvées (>= ${start})`);
+        return filtered;
+      }
+
+      // ✅ NOUVEAU : Cas où seulement end est défini (ex: "-50")
+      if (start === null && end !== null) {
+        console.log(`📉 Filtrage: cartes <= ${end} (start non défini)`);
+        const filtered = cards.filter((card) => card.id <= end);
+        console.log(`✅ ${filtered.length} cartes trouvées (<= ${end})`);
+        return filtered;
+      }
+
+      // ✅ AMÉLIORER : Cas où les deux sont définis
+      if (start !== null && end !== null) {
+        const minValue = Math.min(start, end);
+        const maxValue = Math.max(start, end);
+
+        console.log(`📊 Filtrage: cartes entre ${minValue} et ${maxValue}`);
+
+        const filtered = cards.filter(
+          (card) => card.id >= minValue && card.id <= maxValue
+        );
+        console.log(
+          `✅ ${filtered.length} cartes trouvées (${minValue}-${maxValue})`
+        );
+        return filtered;
+      }
+
+      // ✅ NOUVEAU : Si on arrive ici, c'est qu'il y a eu un problème de parsing
+      console.error(`❌ Impossible de parser la plage: "${selectedRange}"`);
+      return cards;
+    }
+
+    console.log(`📋 Cas par défaut: affichage de toutes les cartes`);
+    return cards;
   };
 
   useEffect(() => {
     fetch("/table-de-rappel.json")
       .then((res) => res.json())
       .then((data: CardList) => {
-        // Vérifie qu'on ne l'a pas déjà ajoutée
         const isAlreadyPresent = lists.some(
           (list) => list.title === data.title
         );
@@ -224,18 +301,22 @@ function App() {
         isShuffled={isShuffled}
         toggleShuffle={toggleShuffle}
         selectedRange={selectedRange}
-        onRangeChange={(e) => setSelectedRange(e.target.value)}
+        onRangeChange={handleRangeChange}
         isMobile={isMobile}
         isMobileMenuOpen={isMobileMenuOpen}
         toggleMobileMenu={toggleMobileMenu}
       />
 
+      {/* AJOUT : Spacer pour compenser le header fixe */}
+      <div className={`${isMobile ? "h-20" : "h-24"}`}></div>
+
       {message && (
-        <div className="message mt-16 flex flex-col text-center gap-2 md:flex-row md:justify-around md:items-center border-2  rounded-lg w-3/4 m-auto p-2">
+        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2  rounded-lg w-3/4 m-auto p-2 text-center">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p
                 key={index}
+                className="w-full flex items-center justify-center "
                 style={{
                   background: msg.color,
                   opacity: 0.8,
@@ -248,7 +329,7 @@ function App() {
               </p>
             ))
           ) : (
-            <p>{message}</p> // Si c'est une chaîne de caractères simple
+            <p>{message}</p>
           )}
         </div>
       )}
