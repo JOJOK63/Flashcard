@@ -21,6 +21,8 @@ interface HeaderProps {
   isMobile: boolean;
   isMobileMenuOpen: boolean;
   toggleMobileMenu: () => void;
+  selectedRecurrence: number;
+  onSelectedRecurrenceChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -39,9 +41,22 @@ const Header: React.FC<HeaderProps> = ({
   isMobile,
   isMobileMenuOpen,
   toggleMobileMenu,
+  selectedRecurrence,
+  onSelectedRecurrenceChange,
 }) => {
   const [startRange, setStartRange] = useState<string>("");
   const [endRange, setEndRange] = useState<string>("");
+
+  // Options de récurrence avec leurs labels
+  const recurrenceOptions = [
+    { value: 1, label: "≤ Quotidien" },
+    { value: 2, label: "≤ 2 jours" },
+    { value: 3, label: "≤ Hebdomadaire" },
+    { value: 4, label: "≤ Mensuel" },
+    { value: 5, label: "≤ Trimestriel" },
+    { value: 6, label: "≤ Semestriel" },
+    { value: 7, label: "Toutes" },
+  ];
 
   // Fonction pour valider et mettre à jour la plage
   const updateRange = (start: string, end: string) => {
@@ -166,6 +181,24 @@ const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Section Récurrence */}
+        <div className="flex justify-center items-center uppercase">
+          <label className="mr-2">Récurrence :</label>
+          <select
+            name="recurrence-choice"
+            id="recurrence-choice"
+            className="p-2 bg-background border-2 border-textColor rounded-lg text-xs"
+            value={selectedRecurrence}
+            onChange={onSelectedRecurrenceChange}
+          >
+            {recurrenceOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex uppercase justify-center items-center">
