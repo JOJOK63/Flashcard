@@ -12,7 +12,7 @@ export interface CardType {
 
 export interface CardList {
   title: string;
-  message?: string | Array<{ text: string; color?: string }>;
+  message?: string | { text: string; color?: string }[];
   cards: CardType[];
 }
 

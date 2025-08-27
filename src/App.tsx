@@ -11,7 +11,9 @@ function App() {
   const [lists, setLists] = useState<CardList[]>([]);
   const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | undefined>(undefined);
+  const [message, setMessage] = useState<
+    string | { text: string; color?: string }[] | undefined
+  >(undefined);
   const [isShuffled, setIsShuffled] = useState(false);
   const [selectedRange, setSelectedRange] = useState<string>("all");
   const [isMobile, setIsMobile] = useState(false);
@@ -273,7 +275,7 @@ function App() {
   // 🆕 MODIFICATION : Le type des cartes dans saveNewList inclut maintenant recurrence
   const saveNewList = (newList: {
     title: string;
-    message?: string;
+    message?: string | { text: string; color?: string }[]; // Type corrigé
     cards: Array<{
       recto: string;
       title: string;
