@@ -11,26 +11,94 @@ function App() {
   const [lists, setLists] = useState<CardList[]>([]);
   const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | undefined>(undefined); // Ajout de l'état message
+  const [message, setMessage] = useState<
+    string | { text: string; color?: string }[] | undefined
+  >(undefined);
   const [isShuffled, setIsShuffled] = useState(false);
   const [selectedRange, setSelectedRange] = useState<string>("all");
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // 🆕 NOUVEAU : État pour la récurrence sélectionnée
+  const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7); // 7 = toutes les cartes
 
   useEffect(() => {
     const storedLists: CardList[] = JSON.parse(
       localStorage.getItem("cardLists") || "[]"
     );
     setLists(storedLists);
-    if (storedLists.length > 0) {
-      setSelectedList(storedLists[0].title);
-      setCards(
-        storedLists[0].cards.map((card) => ({
-          ...card,
-          isFlipped: showVerso,
-          color: card.color || "",
-        }))
-      );
-      setMessage(storedLists[0].message); // Initialiser le message
-    }
+
+    // Charger la table de rappel par défaut si elle n'existe pas
+    fetch("/table-de-rappel.json")
+      .then((res) => res.json())
+      .then((data: CardList) => {
+        const isAlreadyPresent = storedLists.some(
+          (list) => list.title === data.title
+        );
+
+        if (!isAlreadyPresent) {
+          // 🆕 MODIFICATION : S'assurer que chaque carte a une récurrence par défaut
+          const dataWithRecurrence = {
+            ...data,
+            cards: data.cards.map((card) => ({
+              ...card,
+              recurrence: card.recurrence ?? 0, // Par défaut 0 si pas défini
+            })),
+          };
+
+          const updatedLists = [...storedLists, dataWithRecurrence];
+          setLists(updatedLists);
+          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+
+          // Si c'était la première liste, la sélectionner
+          if (storedLists.length === 0) {
+            setSelectedList(dataWithRecurrence.title);
+            setCards(
+              dataWithRecurrence.cards.map((card) => ({
+                ...card,
+                isFlipped: showVerso,
+                color: card.color || "",
+                recurrence: card.recurrence ?? 0, // 🆕 AJOUT
+              }))
+            );
+            setMessage(dataWithRecurrence.message);
+          }
+        } else {
+          // Si les listes existent déjà, sélectionner la première
+          if (storedLists.length > 0) {
+            setSelectedList(storedLists[0].title);
+            setCards(
+              storedLists[0].cards.map((card) => ({
+                ...card,
+                isFlipped: showVerso,
+                color: card.color || "",
+                recurrence: card.recurrence ?? 0, // 🆕 AJOUT
+              }))
+            );
+            setMessage(storedLists[0].message);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur lors du chargement de la table de rappel :",
+          error
+        );
+
+        // En cas d'erreur, utiliser les listes existantes
+        if (storedLists.length > 0) {
+          setSelectedList(storedLists[0].title);
+          setCards(
+            storedLists[0].cards.map((card) => ({
+              ...card,
+              isFlipped: showVerso,
+              color: card.color || "",
+              recurrence: card.recurrence ?? 0, // 🆕 AJOUT
+            }))
+          );
+          setMessage(storedLists[0].message);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -49,11 +117,12 @@ function App() {
           ...card,
           isFlipped: showVerso,
           color: card.color || "",
+          recurrence: card.recurrence ?? 0, // 🆕 AJOUT
         }))
       );
       setMessage(selectedListObject?.message);
     }
-  }, [showVerso, selectedList, lists, isShuffled]); // <- ajout de isShuffled
+  }, [showVerso, selectedList, lists, isShuffled, selectedRange]);
 
   const resetCards = () => {
     setCards(cards.map((card) => ({ ...card, isFlipped: showVerso })));
@@ -65,6 +134,68 @@ function App() {
         card.id === id ? { ...card, isFlipped: !card.isFlipped } : card
       )
     );
+  };
+
+  // 🆕 NOUVELLE FONCTION : Mettre à jour la récurrence d'une carte
+  const updateCardRecurrence = (cardId: number, newRecurrence: number) => {
+    // Mettre à jour l'état local des cartes
+    setCards((prevCards) =>
+      prevCards.map((card) =>
+        card.id === cardId ? { ...card, recurrence: newRecurrence } : card
+      )
+    );
+
+    // Mettre à jour dans les listes permanentes
+    const currentList = lists.find((list) => list.title === selectedList);
+    if (!currentList) return;
+
+    const updatedCards = currentList.cards.map((card) =>
+      card.id === cardId ? { ...card, recurrence: newRecurrence } : card
+    );
+
+    const updatedLists = lists.map((list) =>
+      list.title === selectedList ? { ...list, cards: updatedCards } : list
+    );
+
+    setLists(updatedLists);
+    localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+  };
+
+  // 🆕 FONCTION MODIFIÉE : Filtrer les cartes par récurrence
+  const filterCardsByRecurrence = (
+    cards: CardType[],
+    selectedRecurrence: number
+  ) => {
+    // Si 7 est sélectionné, afficher toutes les cartes
+    if (selectedRecurrence === 7) {
+      return cards;
+    }
+
+    // ✅ NOUVEAU CODE : Afficher les cartes de la catégorie ET toutes celles en dessous
+    return cards.filter((card) => {
+      const cardRecurrence = card.recurrence ?? 0;
+      return cardRecurrence <= selectedRecurrence;
+    });
+  };
+
+  // 🆕 ALTERNATIVE si vous voulez SEULEMENT la catégorie exacte :
+  // const filterCardsByRecurrence = (
+  //   cards: CardType[],
+  //   selectedRecurrence: number
+  // ) => {
+  //   // Si 7 est sélectionné, afficher toutes les cartes
+  //   if (selectedRecurrence === 7) {
+  //     return cards;
+  //   }
+  //
+  //   // Afficher SEULEMENT les cartes de la catégorie exacte
+  //   return cards.filter((card) => (card.recurrence ?? 0) === selectedRecurrence);
+  // };
+
+  // 🆕 NOUVELLE FONCTION : Gérer le changement de récurrence dans le header
+  const handleRecurrenceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRecurrence = parseInt(e.target.value);
+    setSelectedRecurrence(newRecurrence);
   };
 
   const handleShowVersoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +210,16 @@ function App() {
         try {
           const json: CardList = JSON.parse(e.target?.result as string);
           if (json.title && json.cards) {
-            const updatedLists = [...lists, json];
+            // 🆕 MODIFICATION : S'assurer que chaque carte importée a une récurrence
+            const jsonWithRecurrence = {
+              ...json,
+              cards: json.cards.map((card) => ({
+                ...card,
+                recurrence: card.recurrence ?? 0,
+              })),
+            };
+
+            const updatedLists = [...lists, jsonWithRecurrence];
             setLists(updatedLists);
             localStorage.setItem("cardLists", JSON.stringify(updatedLists));
           } else {
@@ -108,13 +248,14 @@ function App() {
           updatedLists[0].cards.map((card) => ({
             ...card,
             isFlipped: showVerso,
+            recurrence: card.recurrence ?? 0, // 🆕 AJOUT
           }))
         );
-        setMessage(updatedLists[0].message); // Mettre à jour le message lors de la suppression
+        setMessage(updatedLists[0].message);
       } else {
         setSelectedList("");
         setCards([]);
-        setMessage(undefined); // Effacer le message s'il n'y a plus de listes
+        setMessage(undefined);
       }
     }
   };
@@ -131,10 +272,17 @@ function App() {
     document.body.removeChild(link);
   };
 
+  // 🆕 MODIFICATION : Le type des cartes dans saveNewList inclut maintenant recurrence
   const saveNewList = (newList: {
     title: string;
-    message?: string;
-    cards: Omit<CardType, "id">[];
+    message?: string | { text: string; color?: string }[]; // Type corrigé
+    cards: Array<{
+      recto: string;
+      title: string;
+      img: string;
+      color: string;
+      recurrence: number; // 🆕 AJOUT
+    }>;
   }) => {
     const maxId = lists.reduce((max, list) => {
       const listMaxId = list.cards.reduce(
@@ -146,7 +294,7 @@ function App() {
 
     const newCardsWithIds = newList.cards.map((card, index) => ({
       ...card,
-      id: maxId + index + 1, // Assigner des IDs uniques
+      id: maxId + index + 1,
     }));
 
     const updatedList: CardList = {
@@ -155,7 +303,6 @@ function App() {
       cards: newCardsWithIds,
     };
 
-    // Téléchargement du fichier JSON
     downloadJson(updatedList, updatedList.title);
 
     const updatedLists = [...lists, updatedList];
@@ -164,40 +311,71 @@ function App() {
   };
 
   const shuffleArray = (array: CardType[]) => {
-    return [...array].sort(() => Math.random() - 0.5);
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; // swap
+    }
+    return newArray;
   };
 
   const toggleShuffle = () => {
     setIsShuffled((prev) => !prev);
   };
 
+  const handleRangeChange = (range: string) => {
+    setSelectedRange(range);
+  };
+
+  // 🆕 MODIFICATION : getFilteredCards applique maintenant DEUX filtres
   const getFilteredCards = () => {
-    if (selectedRange === "all") return cards;
-    const [start, end] = selectedRange.split("-").map(Number);
-    return cards.filter((card) => card.id >= start && card.id <= end);
+    let filteredCards = cards;
+
+    // ÉTAPE 1: Filtrer par récurrence
+    filteredCards = filterCardsByRecurrence(filteredCards, selectedRecurrence);
+
+    // ÉTAPE 2: Filtrer par plage (code existant)
+    if (selectedRange === "all") {
+      return filteredCards;
+    }
+
+    if (selectedRange.endsWith("-") && !selectedRange.startsWith("-")) {
+      const start = parseInt(selectedRange.replace("-", ""));
+      return filteredCards.filter((card) => card.id >= start);
+    }
+
+    if (selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
+      const end = parseInt(selectedRange.replace("-", ""));
+      return filteredCards.filter((card) => card.id <= end);
+    }
+
+    if (
+      selectedRange.includes("-") &&
+      !selectedRange.startsWith("-") &&
+      !selectedRange.endsWith("-")
+    ) {
+      const [startStr, endStr] = selectedRange.split("-");
+      const start = parseInt(startStr);
+      const end = parseInt(endStr);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        return filteredCards.filter(
+          (card) => card.id >= start && card.id <= end
+        );
+      }
+    }
+
+    return filteredCards;
   };
 
   useEffect(() => {
-    fetch("/table-de-rappel.json")
-      .then((res) => res.json())
-      .then((data: CardList) => {
-        // Vérifie qu'on ne l'a pas déjà ajoutée
-        const isAlreadyPresent = lists.some(
-          (list) => list.title === data.title
-        );
-        if (!isAlreadyPresent) {
-          const updatedLists = [...lists, data];
-          setLists(updatedLists);
-          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Erreur lors du chargement de la table de rappel :",
-          error
-        );
-      });
-  }, [lists]);
+    const checkSize = () => setIsMobile(window.innerWidth < 768);
+    checkSize();
+    window.addEventListener("resize", checkSize);
+    return () => window.removeEventListener("resize", checkSize);
+  }, []);
+
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   return (
     <>
@@ -214,20 +392,28 @@ function App() {
         isShuffled={isShuffled}
         toggleShuffle={toggleShuffle}
         selectedRange={selectedRange}
-        onRangeChange={(e) => setSelectedRange(e.target.value)}
+        onRangeChange={handleRangeChange}
+        isMobile={isMobile}
+        isMobileMenuOpen={isMobileMenuOpen}
+        toggleMobileMenu={toggleMobileMenu}
+        selectedRecurrence={selectedRecurrence} // 🆕 AJOUT
+        onSelectedRecurrenceChange={handleRecurrenceChange} // 🆕 AJOUT
       />
 
+      <div className={`${isMobile ? "h-20" : "h-24"}`}></div>
+
       {message && (
-        <div className="message flex flex-col text-center gap-2 md:flex-row md:justify-around md:items-center border-2  rounded-lg w-3/4 m-auto mt-10">
+        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2  rounded-lg w-3/4 m-auto p-2 text-center">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p
                 key={index}
+                className="w-full flex items-center justify-center "
                 style={{
                   background: msg.color,
                   opacity: 0.8,
                   padding: 4,
-                  borderRadius: 10,
+                  borderRadius: 8,
                   color: "black",
                 }}
               >
@@ -235,7 +421,7 @@ function App() {
               </p>
             ))
           ) : (
-            <p>{message}</p> // Si c'est une chaîne de caractères simple
+            <p>{message}</p>
           )}
         </div>
       )}
@@ -244,7 +430,7 @@ function App() {
         <Modal onClose={() => setShowModal(false)} onSave={saveNewList} />
       )}
 
-      <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-10 lg:px-40 lg:my-10">
+      <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-16 lg:px-40 lg:my-10">
         {getFilteredCards().map((card) => (
           <Card
             key={card.id}
@@ -255,6 +441,10 @@ function App() {
             isFlipped={card.isFlipped || false}
             flipCard={() => flipCard(card.id)}
             color={card.color}
+            recurrence={card.recurrence ?? 0} // 🆕 AJOUT
+            onRecurrenceChange={(newRecurrence) =>
+              updateCardRecurrence(card.id, newRecurrence)
+            } // 🆕 AJOUT
           />
         ))}
       </div>
