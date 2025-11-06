@@ -3,12 +3,19 @@ import "./App.css";
 import Card from "./components/card/Card";
 import Header from "./components/header/Header";
 import Modal from "./components/modal/Modal";
+import { Auth } from "./components/Auth";
 import { CardType, CardList } from "./types";
+import { supabase } from "./lib/supabase";
+import { useCardLists } from "./hooks/useCardLists";
+import { Session } from "@supabase/supabase-js";
 
 function App() {
+  // ========== ÉTATS D'AUTHENTIFICATION ==========
+  const [session, setSession] = useState<Session | null>(null);
+
+  // ========== ÉTATS EXISTANTS ==========
   const [showVerso, setShowVerso] = useState<boolean>(false);
   const [cards, setCards] = useState<CardType[]>([]);
-  const [lists, setLists] = useState<CardList[]>([]);
   const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
   const [message, setMessage] = useState<
@@ -18,91 +25,75 @@ function App() {
   const [selectedRange, setSelectedRange] = useState<string>("all");
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7);
 
-  // 🆕 NOUVEAU : État pour la récurrence sélectionnée
-  const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7); // 7 = toutes les cartes
+  // ========== HOOK SUPABASE POUR LES LISTES ==========
+  const {
+    lists,
+    loading,
+    error,
+    addList,
+    deleteList: deleteListDB,
+    updateCardRecurrence: updateCardRecurrenceDB,
+    refetch,
+  } = useCardLists(session?.user?.id);
 
+  // ========== GESTION DE L'AUTHENTIFICATION ==========
   useEffect(() => {
-    const storedLists: CardList[] = JSON.parse(
-      localStorage.getItem("cardLists") || "[]"
-    );
-    setLists(storedLists);
+    // Récupérer la session actuelle
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
 
-    // Charger la table de rappel par défaut si elle n'existe pas
-    fetch("/table-de-rappel.json")
-      .then((res) => res.json())
-      .then((data: CardList) => {
-        const isAlreadyPresent = storedLists.some(
-          (list) => list.title === data.title
-        );
+    // Écouter les changements d'authentification
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
 
-        if (!isAlreadyPresent) {
-          // 🆕 MODIFICATION : S'assurer que chaque carte a une récurrence par défaut
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ========== CHARGER LA TABLE DE RAPPEL PAR DÉFAUT ==========
+  useEffect(() => {
+    if (!session) return;
+
+    // Charger la table de rappel par défaut uniquement si aucune liste n'existe
+    if (lists.length === 0 && !loading) {
+      fetch("/table-de-rappel.json")
+        .then((res) => res.json())
+        .then((data: CardList) => {
           const dataWithRecurrence = {
             ...data,
-            cards: data.cards.map((card) => ({
+            cards: data.cards.map((card, index) => ({
               ...card,
-              recurrence: card.recurrence ?? 0, // Par défaut 0 si pas défini
+              id: index + 1,
+              recurrence: card.recurrence ?? 0,
             })),
           };
 
-          const updatedLists = [...storedLists, dataWithRecurrence];
-          setLists(updatedLists);
-          localStorage.setItem("cardLists", JSON.stringify(updatedLists));
-
-          // Si c'était la première liste, la sélectionner
-          if (storedLists.length === 0) {
-            setSelectedList(dataWithRecurrence.title);
-            setCards(
-              dataWithRecurrence.cards.map((card) => ({
-                ...card,
-                isFlipped: showVerso,
-                color: card.color || "",
-                recurrence: card.recurrence ?? 0, // 🆕 AJOUT
-              }))
-            );
-            setMessage(dataWithRecurrence.message);
-          }
-        } else {
-          // Si les listes existent déjà, sélectionner la première
-          if (storedLists.length > 0) {
-            setSelectedList(storedLists[0].title);
-            setCards(
-              storedLists[0].cards.map((card) => ({
-                ...card,
-                isFlipped: showVerso,
-                color: card.color || "",
-                recurrence: card.recurrence ?? 0, // 🆕 AJOUT
-              }))
-            );
-            setMessage(storedLists[0].message);
-          }
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Erreur lors du chargement de la table de rappel :",
-          error
-        );
-
-        // En cas d'erreur, utiliser les listes existantes
-        if (storedLists.length > 0) {
-          setSelectedList(storedLists[0].title);
-          setCards(
-            storedLists[0].cards.map((card) => ({
-              ...card,
-              isFlipped: showVerso,
-              color: card.color || "",
-              recurrence: card.recurrence ?? 0, // 🆕 AJOUT
-            }))
+          addList(dataWithRecurrence).catch(console.error);
+        })
+        .catch((error) => {
+          console.error(
+            "Erreur lors du chargement de la table de rappel :",
+            error
           );
-          setMessage(storedLists[0].message);
-        }
-      });
-  }, []);
+        });
+    }
+  }, [session, lists.length, loading]);
 
+  // ========== SÉLECTIONNER LA PREMIÈRE LISTE AU CHARGEMENT ==========
   useEffect(() => {
-    if (selectedList) {
+    if (lists.length > 0 && !selectedList) {
+      setSelectedList(lists[0].title);
+    }
+  }, [lists]);
+
+  // ========== CHARGER LES CARTES QUAND LA LISTE CHANGE ==========
+  useEffect(() => {
+    if (selectedList && lists.length > 0) {
       const selectedListObject = lists.find(
         (list) => list.title === selectedList
       );
@@ -117,13 +108,14 @@ function App() {
           ...card,
           isFlipped: showVerso,
           color: card.color || "",
-          recurrence: card.recurrence ?? 0, // 🆕 AJOUT
+          recurrence: card.recurrence ?? 0,
         }))
       );
       setMessage(selectedListObject?.message);
     }
-  }, [showVerso, selectedList, lists, isShuffled, selectedRange]);
+  }, [showVerso, selectedList, lists, isShuffled]);
 
+  // ========== FONCTIONS DE MANIPULATION DES CARTES ==========
   const resetCards = () => {
     setCards(cards.map((card) => ({ ...card, isFlipped: showVerso })));
   };
@@ -136,63 +128,43 @@ function App() {
     );
   };
 
-  // 🆕 NOUVELLE FONCTION : Mettre à jour la récurrence d'une carte
-  const updateCardRecurrence = (cardId: number, newRecurrence: number) => {
-    // Mettre à jour l'état local des cartes
+  // ========== MISE À JOUR DE LA RÉCURRENCE (AVEC SUPABASE) ==========
+  const updateCardRecurrence = async (
+    cardId: number,
+    newRecurrence: number
+  ) => {
+    // Mise à jour optimiste locale (immédiate dans l'UI)
     setCards((prevCards) =>
       prevCards.map((card) =>
         card.id === cardId ? { ...card, recurrence: newRecurrence } : card
       )
     );
 
-    // Mettre à jour dans les listes permanentes
-    const currentList = lists.find((list) => list.title === selectedList);
-    if (!currentList) return;
-
-    const updatedCards = currentList.cards.map((card) =>
-      card.id === cardId ? { ...card, recurrence: newRecurrence } : card
-    );
-
-    const updatedLists = lists.map((list) =>
-      list.title === selectedList ? { ...list, cards: updatedCards } : list
-    );
-
-    setLists(updatedLists);
-    localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+    // Mise à jour en base de données
+    try {
+      await updateCardRecurrenceDB(cardId, newRecurrence);
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de la récurrence:", error);
+      // Rollback en cas d'erreur
+      await refetch();
+    }
   };
 
-  // 🆕 FONCTION MODIFIÉE : Filtrer les cartes par récurrence
+  // ========== FILTRAGE PAR RÉCURRENCE ==========
   const filterCardsByRecurrence = (
     cards: CardType[],
     selectedRecurrence: number
   ) => {
-    // Si 7 est sélectionné, afficher toutes les cartes
     if (selectedRecurrence === 7) {
       return cards;
     }
-
-    // ✅ NOUVEAU CODE : Afficher les cartes de la catégorie ET toutes celles en dessous
     return cards.filter((card) => {
       const cardRecurrence = card.recurrence ?? 0;
       return cardRecurrence <= selectedRecurrence;
     });
   };
 
-  // 🆕 ALTERNATIVE si vous voulez SEULEMENT la catégorie exacte :
-  // const filterCardsByRecurrence = (
-  //   cards: CardType[],
-  //   selectedRecurrence: number
-  // ) => {
-  //   // Si 7 est sélectionné, afficher toutes les cartes
-  //   if (selectedRecurrence === 7) {
-  //     return cards;
-  //   }
-  //
-  //   // Afficher SEULEMENT les cartes de la catégorie exacte
-  //   return cards.filter((card) => (card.recurrence ?? 0) === selectedRecurrence);
-  // };
-
-  // 🆕 NOUVELLE FONCTION : Gérer le changement de récurrence dans le header
+  // ========== GESTION DU CHANGEMENT DE RÉCURRENCE ==========
   const handleRecurrenceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRecurrence = parseInt(e.target.value);
     setSelectedRecurrence(newRecurrence);
@@ -202,31 +174,34 @@ function App() {
     setShowVerso(e.target.checked);
   };
 
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // ========== IMPORT DE FICHIER JSON ==========
+  const handleFileImport = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const json: CardList = JSON.parse(e.target?.result as string);
           if (json.title && json.cards) {
-            // 🆕 MODIFICATION : S'assurer que chaque carte importée a une récurrence
             const jsonWithRecurrence = {
               ...json,
-              cards: json.cards.map((card) => ({
+              cards: json.cards.map((card, index) => ({
                 ...card,
+                id: index + 1,
                 recurrence: card.recurrence ?? 0,
               })),
             };
 
-            const updatedLists = [...lists, jsonWithRecurrence];
-            setLists(updatedLists);
-            localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+            await addList(jsonWithRecurrence);
+            alert("Liste importée avec succès !");
           } else {
             alert("Fichier JSON invalide.");
           }
         } catch (error) {
           alert("Erreur lors de la lecture du fichier JSON.");
+          console.error(error);
         }
       };
       reader.readAsText(file);
@@ -237,25 +212,26 @@ function App() {
     setSelectedList(e.target.value);
   };
 
-  const deleteList = () => {
+  // ========== SUPPRESSION DE LISTE (AVEC SUPABASE) ==========
+  const deleteList = async () => {
     if (selectedList) {
-      const updatedLists = lists.filter((list) => list.title !== selectedList);
-      setLists(updatedLists);
-      localStorage.setItem("cardLists", JSON.stringify(updatedLists));
-      if (updatedLists.length > 0) {
-        setSelectedList(updatedLists[0].title);
-        setCards(
-          updatedLists[0].cards.map((card) => ({
-            ...card,
-            isFlipped: showVerso,
-            recurrence: card.recurrence ?? 0, // 🆕 AJOUT
-          }))
+      try {
+        await deleteListDB(selectedList);
+
+        // Sélectionner une autre liste ou réinitialiser
+        const remainingLists = lists.filter(
+          (list) => list.title !== selectedList
         );
-        setMessage(updatedLists[0].message);
-      } else {
-        setSelectedList("");
-        setCards([]);
-        setMessage(undefined);
+        if (remainingLists.length > 0) {
+          setSelectedList(remainingLists[0].title);
+        } else {
+          setSelectedList("");
+          setCards([]);
+          setMessage(undefined);
+        }
+      } catch (error) {
+        alert("Erreur lors de la suppression de la liste");
+        console.error(error);
       }
     }
   };
@@ -272,49 +248,46 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // 🆕 MODIFICATION : Le type des cartes dans saveNewList inclut maintenant recurrence
-  const saveNewList = (newList: {
+  // ========== SAUVEGARDE NOUVELLE LISTE (AVEC SUPABASE) ==========
+  const saveNewList = async (newList: {
     title: string;
-    message?: string | { text: string; color?: string }[]; // Type corrigé
+    message?: string | { text: string; color?: string }[];
     cards: Array<{
       recto: string;
       title: string;
       img: string;
       color: string;
-      recurrence: number; // 🆕 AJOUT
+      recurrence: number;
     }>;
   }) => {
-    const maxId = lists.reduce((max, list) => {
-      const listMaxId = list.cards.reduce(
-        (innerMax, card) => Math.max(innerMax, card.id),
-        0
-      );
-      return Math.max(max, listMaxId);
-    }, 0);
+    try {
+      // Ajouter des IDs temporaires pour l'affichage local
+      const listWithIds = {
+        ...newList,
+        cards: newList.cards.map((card, index) => ({
+          ...card,
+          id: Date.now() + index, // ID temporaire
+        })),
+      };
 
-    const newCardsWithIds = newList.cards.map((card, index) => ({
-      ...card,
-      id: maxId + index + 1,
-    }));
+      // Sauvegarder en base de données
+      await addList(listWithIds as CardList);
 
-    const updatedList: CardList = {
-      title: newList.title,
-      message: newList.message,
-      cards: newCardsWithIds,
-    };
+      // Télécharger aussi le JSON localement
+      downloadJson(listWithIds, listWithIds.title);
 
-    downloadJson(updatedList, updatedList.title);
-
-    const updatedLists = [...lists, updatedList];
-    setLists(updatedLists);
-    localStorage.setItem("cardLists", JSON.stringify(updatedLists));
+      alert("Liste créée avec succès !");
+    } catch (error) {
+      alert("Erreur lors de la création de la liste");
+      console.error(error);
+    }
   };
 
   const shuffleArray = (array: CardType[]) => {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; // swap
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
     }
     return newArray;
   };
@@ -327,14 +300,14 @@ function App() {
     setSelectedRange(range);
   };
 
-  // 🆕 MODIFICATION : getFilteredCards applique maintenant DEUX filtres
+  // ========== FILTRAGE DES CARTES (RÉCURRENCE + PLAGE) ==========
   const getFilteredCards = () => {
     let filteredCards = cards;
 
-    // ÉTAPE 1: Filtrer par récurrence
+    // Filtre 1: Par récurrence
     filteredCards = filterCardsByRecurrence(filteredCards, selectedRecurrence);
 
-    // ÉTAPE 2: Filtrer par plage (code existant)
+    // Filtre 2: Par plage
     if (selectedRange === "all") {
       return filteredCards;
     }
@@ -377,6 +350,46 @@ function App() {
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
+  // ========== AFFICHAGE CONDITIONNEL ==========
+
+  // Si pas de session, afficher l'écran de connexion
+  if (!session) {
+    return <Auth />;
+  }
+
+  // Si chargement en cours, afficher un loader
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="text-2xl font-bold mb-4">
+            Chargement de vos flashcards...
+          </div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-card-background mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Si erreur, l'afficher
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center text-red-600">
+          <div className="text-2xl font-bold mb-4">Erreur</div>
+          <p>{error}</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== AFFICHAGE PRINCIPAL ==========
   return (
     <>
       <Header
@@ -396,19 +409,19 @@ function App() {
         isMobile={isMobile}
         isMobileMenuOpen={isMobileMenuOpen}
         toggleMobileMenu={toggleMobileMenu}
-        selectedRecurrence={selectedRecurrence} // 🆕 AJOUT
-        onSelectedRecurrenceChange={handleRecurrenceChange} // 🆕 AJOUT
+        selectedRecurrence={selectedRecurrence}
+        onSelectedRecurrenceChange={handleRecurrenceChange}
       />
 
       <div className={`${isMobile ? "h-20" : "h-24"}`}></div>
 
       {message && (
-        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2  rounded-lg w-3/4 m-auto p-2 text-center">
+        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2 rounded-lg w-3/4 m-auto p-2 text-center">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p
                 key={index}
-                className="w-full flex items-center justify-center "
+                className="w-full flex items-center justify-center"
                 style={{
                   background: msg.color,
                   opacity: 0.8,
@@ -441,13 +454,21 @@ function App() {
             isFlipped={card.isFlipped || false}
             flipCard={() => flipCard(card.id)}
             color={card.color}
-            recurrence={card.recurrence ?? 0} // 🆕 AJOUT
+            recurrence={card.recurrence ?? 0}
             onRecurrenceChange={(newRecurrence) =>
               updateCardRecurrence(card.id, newRecurrence)
-            } // 🆕 AJOUT
+            }
           />
         ))}
       </div>
+
+      {/* Bouton de déconnexion */}
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="fixed bottom-4 right-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-lg"
+      >
+        Déconnexion
+      </button>
     </>
   );
 }
