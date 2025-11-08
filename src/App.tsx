@@ -60,7 +60,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🔧 CORRECTION : Charger la table de rappel UNE SEULE FOIS
+  // 🔧 CORRECTION : Charger TOUTES les listes du dossier public UNE SEULE FOIS
   useEffect(() => {
     // Conditions de chargement strictes
     if (!session || loading || hasLoadedDefaultList.current) {
@@ -71,30 +71,49 @@ function App() {
     if (lists.length === 0) {
       hasLoadedDefaultList.current = true; // ✅ Marquer comme chargé
 
-      fetch("/table-de-rappel.json")
-        .then((res) => res.json())
-        .then((data: CardList) => {
-          const dataWithRecurrence = {
-            ...data,
-            cards: data.cards.map((card, index) => ({
-              ...card,
-              id: index + 1,
-              recurrence: card.recurrence ?? 0,
-            })),
-          };
+      // 🆕 Liste de tous les fichiers JSON à charger depuis /public
+      const jsonFiles = [
+        "/table-de-rappel.json",
+        "signe-astrologique.json"
+        // Ajoutez ici d'autres fichiers JSON du dossier public
+        // "/liste-exemple-2.json",
+        // "/vocabulaire.json",
+      ];
 
-          addList(dataWithRecurrence)
-            .then(() => {
-              console.log("✅ Table de rappel chargée avec succès");
+      // Charger tous les fichiers en parallèle
+      Promise.all(
+        jsonFiles.map((file) =>
+          fetch(file)
+            .then((res) => res.json())
+            .then((data: CardList) => ({
+              ...data,
+              cards: data.cards.map((card, index) => ({
+                ...card,
+                id: index + 1,
+                recurrence: card.recurrence ?? 0,
+              })),
+            }))
+            .catch((error) => {
+              console.error(`❌ Erreur lecture ${file}:`, error);
+              return null; // Continuer même si un fichier échoue
             })
-            .catch((err) => {
-              console.error("❌ Erreur lors du chargement:", err);
-              hasLoadedDefaultList.current = false; // Réessayer en cas d'erreur
-            });
+        )
+      )
+        .then((allLists) => {
+          // Filtrer les listes null (erreurs) et les ajouter une par une
+          const validLists = allLists.filter((list) => list !== null);
+          
+          // Ajouter toutes les listes séquentiellement
+          const addPromises = validLists.map((list) => addList(list!));
+          
+          return Promise.all(addPromises);
         })
-        .catch((error) => {
-          console.error("❌ Erreur lecture JSON:", error);
-          hasLoadedDefaultList.current = false;
+        .then(() => {
+          console.log("✅ Toutes les listes d'exemple chargées avec succès");
+        })
+        .catch((err) => {
+          console.error("❌ Erreur lors du chargement des listes:", err);
+          hasLoadedDefaultList.current = false; // Réessayer en cas d'erreur
         });
     }
   }, [session, lists.length, loading, addList]);

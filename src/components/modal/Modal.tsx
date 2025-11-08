@@ -5,7 +5,7 @@ interface CardInput {
   title: string;
   img: string;
   color: string;
-  recurrence: number; // Nouvelle propriété pour la récurrence
+  recurrence: number;
 }
 
 interface ModalProps {
@@ -21,7 +21,7 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
   const [listTitle, setListTitle] = useState("");
   const [message, setMessage] = useState("");
   const [cards, setCards] = useState<CardInput[]>([
-    { recto: "", title: "", img: "", color: "", recurrence: 0 }, // Récurrence par défaut à 0
+    { recto: "", title: "", img: "", color: "#ffffff", recurrence: 0 }, // 🔧 FIX : Couleur par défaut #ffffff
   ]);
 
   // Options de récurrence avec leurs labels
@@ -47,13 +47,17 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
     } else {
       updatedCards[index][field] = value as string;
     }
+    
+    // 🔧 DEBUG : Afficher les changements
+    console.log(`Carte ${index} - ${field}:`, value);
+    
     setCards(updatedCards);
   };
 
   const addCard = () => {
     setCards([
       ...cards,
-      { recto: "", title: "", img: "", color: "", recurrence: 0 },
+      { recto: "", title: "", img: "", color: "#ffffff", recurrence: 0 }, // 🔧 FIX : Couleur par défaut
     ]);
   };
 
@@ -69,6 +73,9 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
       alert("Le titre de la liste est obligatoire.");
       return;
     }
+
+    // 🔧 DEBUG : Vérifier les données avant sauvegarde
+    console.log("📝 Données du modal:", { title: listTitle, message, cards });
 
     onSave({ title: listTitle, message, cards });
     onClose();
@@ -174,14 +181,28 @@ const Modal: React.FC<ModalProps> = ({ onClose, onSave }) => {
                   <label className="block mb-1 font-semibold">
                     Couleur du verso
                   </label>
-                  <input
-                    type="color"
-                    className="w-full p-2 border border-gray-300 rounded h-10"
-                    value={card.color || "#ffffff"}
-                    onChange={(e) =>
-                      handleCardChange(index, "color", e.target.value)
-                    }
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      className="w-16 h-10 p-1 border border-gray-300 rounded cursor-pointer"
+                      value={card.color || "#ffffff"}
+                      onChange={(e) =>
+                        handleCardChange(index, "color", e.target.value)
+                      }
+                    />
+                    <input
+                      type="text"
+                      className="flex-1 p-2 border border-gray-300 rounded"
+                      value={card.color || "#ffffff"}
+                      onChange={(e) =>
+                        handleCardChange(index, "color", e.target.value)
+                      }
+                      placeholder="#ffffff"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Couleur actuelle: <span style={{ color: card.color || "#000" }}>■</span> {card.color || "#ffffff"}
+                  </p>
                 </div>
               </div>
 

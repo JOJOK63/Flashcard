@@ -111,16 +111,21 @@ export const useCardLists = (userId: string | undefined) => {
           recto: card.recto,
           title: card.title,
           img: card.img || "",
-          color: card.color || "",
-          recurrence: card.recurrence ?? 0, // ✅ Valeur par défaut
+          color: card.color || "", // 🔧 FIX : S'assurer que la couleur est bien transmise
+          recurrence: card.recurrence ?? 0,
           position: index,
         }));
+
+        console.log("📤 Insertion des cartes:", cardsToInsert); // Debug
 
         const { error: cardsError } = await supabase
           .from("cards")
           .insert(cardsToInsert);
 
-        if (cardsError) throw cardsError;
+        if (cardsError) {
+          console.error("❌ Erreur insertion cartes:", cardsError);
+          throw cardsError;
+        }
       }
 
       await fetchLists();
