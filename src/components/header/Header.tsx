@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import rerollSvg from "../../../public/refresh-line(1).svg";
-import addSvg from "../../../public/add-circle-line(1).svg";
-import deleteSvg from "../../../public/close-circle-line(1).svg";
+import rerollSvg from "/refresh-line(1).svg";
+import addSvg from "/add-circle-line(1).svg";
+import deleteSvg from "/close-circle-line(1).svg";
 import { CardList } from "../../types";
 
 interface HeaderProps {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import Card from "./components/card/Card";
 import Header from "./components/header/Header";
@@ -27,6 +27,9 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7);
 
+  // 🔧 CORRECTION : Utiliser un ref pour éviter les chargements multiples
+  const hasLoadedDefaultList = useRef(false);
+
   // ========== HOOK SUPABASE POUR LES LISTES ==========
   const {
     lists,
@@ -40,27 +43,34 @@ function App() {
 
   // ========== GESTION DE L'AUTHENTIFICATION ==========
   useEffect(() => {
-    // Récupérer la session actuelle
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    // Écouter les changements d'authentification
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // 🔧 CORRECTION : Réinitialiser le flag lors d'un changement d'utilisateur
+      if (session) {
+        hasLoadedDefaultList.current = false;
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // ========== CHARGER LA TABLE DE RAPPEL PAR DÉFAUT ==========
+  // 🔧 CORRECTION : Charger la table de rappel UNE SEULE FOIS
   useEffect(() => {
-    if (!session) return;
+    // Conditions de chargement strictes
+    if (!session || loading || hasLoadedDefaultList.current) {
+      return;
+    }
 
-    // Charger la table de rappel par défaut uniquement si aucune liste n'existe
-    if (lists.length === 0 && !loading) {
+    // Charger seulement si aucune liste n'existe
+    if (lists.length === 0) {
+      hasLoadedDefaultList.current = true; // ✅ Marquer comme chargé
+
       fetch("/table-de-rappel.json")
         .then((res) => res.json())
         .then((data: CardList) => {
@@ -73,23 +83,28 @@ function App() {
             })),
           };
 
-          addList(dataWithRecurrence).catch(console.error);
+          addList(dataWithRecurrence)
+            .then(() => {
+              console.log("✅ Table de rappel chargée avec succès");
+            })
+            .catch((err) => {
+              console.error("❌ Erreur lors du chargement:", err);
+              hasLoadedDefaultList.current = false; // Réessayer en cas d'erreur
+            });
         })
         .catch((error) => {
-          console.error(
-            "Erreur lors du chargement de la table de rappel :",
-            error
-          );
+          console.error("❌ Erreur lecture JSON:", error);
+          hasLoadedDefaultList.current = false;
         });
     }
-  }, [session, lists.length, loading]);
+  }, [session, lists.length, loading, addList]);
 
   // ========== SÉLECTIONNER LA PREMIÈRE LISTE AU CHARGEMENT ==========
   useEffect(() => {
     if (lists.length > 0 && !selectedList) {
       setSelectedList(lists[0].title);
     }
-  }, [lists]);
+  }, [lists, selectedList]);
 
   // ========== CHARGER LES CARTES QUAND LA LISTE CHANGE ==========
   useEffect(() => {
@@ -97,7 +112,15 @@ function App() {
       const selectedListObject = lists.find(
         (list) => list.title === selectedList
       );
-      let selectedCards = selectedListObject?.cards || [];
+      
+      // 🔧 CORRECTION : Vérifier que la liste existe et a des cartes
+      if (!selectedListObject) {
+        setCards([]);
+        setMessage(undefined);
+        return;
+      }
+
+      let selectedCards = selectedListObject.cards || [];
 
       if (isShuffled) {
         selectedCards = shuffleArray(selectedCards);
@@ -111,7 +134,7 @@ function App() {
           recurrence: card.recurrence ?? 0,
         }))
       );
-      setMessage(selectedListObject?.message);
+      setMessage(selectedListObject.message);
     }
   }, [showVerso, selectedList, lists, isShuffled]);
 
@@ -133,19 +156,17 @@ function App() {
     cardId: number,
     newRecurrence: number
   ) => {
-    // Mise à jour optimiste locale (immédiate dans l'UI)
+    // Mise à jour optimiste locale
     setCards((prevCards) =>
       prevCards.map((card) =>
         card.id === cardId ? { ...card, recurrence: newRecurrence } : card
       )
     );
 
-    // Mise à jour en base de données
     try {
       await updateCardRecurrenceDB(cardId, newRecurrence);
     } catch (error) {
       console.error("Erreur lors de la mise à jour de la récurrence:", error);
-      // Rollback en cas d'erreur
       await refetch();
     }
   };
@@ -164,7 +185,6 @@ function App() {
     });
   };
 
-  // ========== GESTION DU CHANGEMENT DE RÉCURRENCE ==========
   const handleRecurrenceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRecurrence = parseInt(e.target.value);
     setSelectedRecurrence(newRecurrence);
@@ -212,27 +232,31 @@ function App() {
     setSelectedList(e.target.value);
   };
 
-  // ========== SUPPRESSION DE LISTE (AVEC SUPABASE) ==========
+  // ========== SUPPRESSION DE LISTE ==========
   const deleteList = async () => {
-    if (selectedList) {
-      try {
-        await deleteListDB(selectedList);
+    if (!selectedList) return;
 
-        // Sélectionner une autre liste ou réinitialiser
-        const remainingLists = lists.filter(
-          (list) => list.title !== selectedList
-        );
-        if (remainingLists.length > 0) {
-          setSelectedList(remainingLists[0].title);
-        } else {
-          setSelectedList("");
-          setCards([]);
-          setMessage(undefined);
-        }
-      } catch (error) {
-        alert("Erreur lors de la suppression de la liste");
-        console.error(error);
+    // 🔧 CORRECTION : Confirmation avant suppression
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${selectedList}" ?`)) {
+      return;
+    }
+
+    try {
+      await deleteListDB(selectedList);
+
+      const remainingLists = lists.filter(
+        (list) => list.title !== selectedList
+      );
+      if (remainingLists.length > 0) {
+        setSelectedList(remainingLists[0].title);
+      } else {
+        setSelectedList("");
+        setCards([]);
+        setMessage(undefined);
       }
+    } catch (error) {
+      alert("Erreur lors de la suppression de la liste");
+      console.error(error);
     }
   };
 
@@ -248,7 +272,7 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // ========== SAUVEGARDE NOUVELLE LISTE (AVEC SUPABASE) ==========
+  // ========== SAUVEGARDE NOUVELLE LISTE ==========
   const saveNewList = async (newList: {
     title: string;
     message?: string | { text: string; color?: string }[];
@@ -261,21 +285,16 @@ function App() {
     }>;
   }) => {
     try {
-      // Ajouter des IDs temporaires pour l'affichage local
       const listWithIds = {
         ...newList,
         cards: newList.cards.map((card, index) => ({
           ...card,
-          id: Date.now() + index, // ID temporaire
+          id: Date.now() + index,
         })),
       };
 
-      // Sauvegarder en base de données
       await addList(listWithIds as CardList);
-
-      // Télécharger aussi le JSON localement
       downloadJson(listWithIds, listWithIds.title);
-
       alert("Liste créée avec succès !");
     } catch (error) {
       alert("Erreur lors de la création de la liste");
@@ -300,14 +319,12 @@ function App() {
     setSelectedRange(range);
   };
 
-  // ========== FILTRAGE DES CARTES (RÉCURRENCE + PLAGE) ==========
+  // ========== FILTRAGE DES CARTES ==========
   const getFilteredCards = () => {
     let filteredCards = cards;
 
-    // Filtre 1: Par récurrence
     filteredCards = filterCardsByRecurrence(filteredCards, selectedRecurrence);
 
-    // Filtre 2: Par plage
     if (selectedRange === "all") {
       return filteredCards;
     }
@@ -352,12 +369,10 @@ function App() {
 
   // ========== AFFICHAGE CONDITIONNEL ==========
 
-  // Si pas de session, afficher l'écran de connexion
   if (!session) {
     return <Auth />;
   }
 
-  // Si chargement en cours, afficher un loader
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -371,7 +386,6 @@ function App() {
     );
   }
 
-  // Si erreur, l'afficher
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -389,7 +403,6 @@ function App() {
     );
   }
 
-  // ========== AFFICHAGE PRINCIPAL ==========
   return (
     <>
       <Header
@@ -444,25 +457,30 @@ function App() {
       )}
 
       <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-16 lg:px-40 lg:my-10">
-        {getFilteredCards().map((card) => (
-          <Card
-            key={card.id}
-            id={card.id}
-            recto={card.recto}
-            title={card.title}
-            img={card.img}
-            isFlipped={card.isFlipped || false}
-            flipCard={() => flipCard(card.id)}
-            color={card.color}
-            recurrence={card.recurrence ?? 0}
-            onRecurrenceChange={(newRecurrence) =>
-              updateCardRecurrence(card.id, newRecurrence)
-            }
-          />
-        ))}
+        {getFilteredCards().length === 0 ? (
+          <div className="text-center text-gray-500 text-lg">
+            Aucune carte à afficher
+          </div>
+        ) : (
+          getFilteredCards().map((card) => (
+            <Card
+              key={card.id}
+              id={card.id}
+              recto={card.recto}
+              title={card.title}
+              img={card.img}
+              isFlipped={card.isFlipped || false}
+              flipCard={() => flipCard(card.id)}
+              color={card.color}
+              recurrence={card.recurrence ?? 0}
+              onRecurrenceChange={(newRecurrence) =>
+                updateCardRecurrence(card.id, newRecurrence)
+              }
+            />
+          ))
+        )}
       </div>
 
-      {/* Bouton de déconnexion */}
       <button
         onClick={() => supabase.auth.signOut()}
         className="fixed bottom-4 right-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-lg"

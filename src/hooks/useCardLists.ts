@@ -13,35 +13,47 @@ export const useCardLists = (userId: string | undefined) => {
       setLoading(false);
       return;
     }
-
     fetchLists();
   }, [userId]);
 
   const fetchLists = async () => {
     try {
       setLoading(true);
-
-      // Récupérer les listes
+      
+      // 🔧 CORRECTION : Filtrer par user_id dès la requête
       const { data: listsData, error: listsError } = await supabase
         .from("card_lists")
         .select("*")
+        .eq("user_id", userId!) // ✅ Ajout du filtre user
         .order("created_at", { ascending: true });
 
       if (listsError) throw listsError;
 
-      // Récupérer toutes les cartes
+      // Si aucune liste, retourner un tableau vide
+      if (!listsData || listsData.length === 0) {
+        setLists([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer les IDs des listes
+      const listIds = listsData.map(list => list.id);
+
+      // 🔧 CORRECTION : Récupérer seulement les cartes des listes de l'utilisateur
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
+        .in("list_id", listIds) // ✅ Filtrer par liste
         .order("position", { ascending: true });
 
       if (cardsError) throw cardsError;
 
-      // Combiner les données
+      // 🔧 CORRECTION : Formater correctement les données
       const formattedLists: CardList[] = listsData.map((list) => ({
         title: list.title,
         message: list.message || undefined,
-        cards: cardsData
+        cards: (cardsData || [])
           .filter((card) => card.list_id === list.id)
           .map((card) => ({
             id: card.id,
@@ -49,7 +61,7 @@ export const useCardLists = (userId: string | undefined) => {
             title: card.title,
             img: card.img || "",
             color: card.color || "",
-            recurrence: card.recurrence,
+            recurrence: card.recurrence ?? 0, // ✅ Valeur par défaut
             isFlipped: false,
           })),
       }));
@@ -66,13 +78,25 @@ export const useCardLists = (userId: string | undefined) => {
 
   const addList = async (newList: CardList) => {
     try {
+      // 🔧 CORRECTION : Vérifier si la liste existe déjà
+      const { data: existingList } = await supabase
+        .from("card_lists")
+        .select("id")
+        .eq("title", newList.title)
+        .eq("user_id", userId!)
+        .maybeSingle();
+
+      if (existingList) {
+        console.log("Liste déjà existante:", newList.title);
+        return; // ✅ Ne pas créer de doublon
+      }
+
       // Insérer la liste
       const { data: listData, error: listError } = await supabase
         .from("card_lists")
         .insert({
           title: newList.title,
-          message:
-            typeof newList.message === "string" ? newList.message : undefined,
+          message: typeof newList.message === "string" ? newList.message : undefined,
           user_id: userId!,
         })
         .select()
@@ -80,22 +104,24 @@ export const useCardLists = (userId: string | undefined) => {
 
       if (listError) throw listError;
 
-      // Insérer les cartes
-      const cardsToInsert = newList.cards.map((card, index) => ({
-        list_id: listData.id,
-        recto: card.recto,
-        title: card.title,
-        img: card.img,
-        color: card.color,
-        recurrence: card.recurrence || 0,
-        position: index,
-      }));
+      // 🔧 CORRECTION : Vérifier qu'il y a des cartes à insérer
+      if (newList.cards && newList.cards.length > 0) {
+        const cardsToInsert = newList.cards.map((card, index) => ({
+          list_id: listData.id,
+          recto: card.recto,
+          title: card.title,
+          img: card.img || "",
+          color: card.color || "",
+          recurrence: card.recurrence ?? 0, // ✅ Valeur par défaut
+          position: index,
+        }));
 
-      const { error: cardsError } = await supabase
-        .from("cards")
-        .insert(cardsToInsert);
+        const { error: cardsError } = await supabase
+          .from("cards")
+          .insert(cardsToInsert);
 
-      if (cardsError) throw cardsError;
+        if (cardsError) throw cardsError;
+      }
 
       await fetchLists();
     } catch (err) {
@@ -106,13 +132,14 @@ export const useCardLists = (userId: string | undefined) => {
 
   const deleteList = async (listTitle: string) => {
     try {
+      // 🔧 CORRECTION : Supprimer par user_id ET title
       const { error } = await supabase
         .from("card_lists")
         .delete()
-        .eq("title", listTitle);
+        .eq("title", listTitle)
+        .eq("user_id", userId!); // ✅ Sécurité supplémentaire
 
       if (error) throw error;
-
       await fetchLists();
     } catch (err) {
       console.error("Error deleting list:", err);
