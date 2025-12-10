@@ -51,21 +51,33 @@ export const useCardLists = (userId: string | undefined) => {
       if (cardsError) throw cardsError;
 
       // Formater les données
-      const formattedLists: CardList[] = listsData.map((list) => ({
-        title: list.title,
-        message: list.message || undefined,
-        cards: (cardsData || [])
-          .filter((card) => card.list_id === list.id)
-          .map((card) => ({
-            id: card.id,
-            recto: card.recto,
-            title: card.title,
-            img: card.img || "",
-            color: card.color || "",
-            recurrence: card.recurrence ?? 0,
-            isFlipped: false,
-          })),
-      }));
+      const formattedLists: CardList[] = listsData.map((list) => {
+        // ✅ FIX : Parser le message s'il est stocké en JSON
+        let parsedMessage = list.message;
+        if (typeof list.message === 'string' && list.message.startsWith('[')) {
+          try {
+            parsedMessage = JSON.parse(list.message);
+          } catch (e) {
+            parsedMessage = list.message;
+          }
+        }
+
+        return {
+          title: list.title,
+          message: parsedMessage || undefined,
+          cards: (cardsData || [])
+            .filter((card) => card.list_id === list.id)
+            .map((card) => ({
+              id: card.id,
+              recto: card.recto,
+              title: card.title,
+              img: card.img || "",
+              color: card.color || "",
+              recurrence: card.recurrence ?? 0,
+              isFlipped: false,
+            })),
+        };
+      });
 
       setLists(formattedLists);
       setError(null);
@@ -93,12 +105,20 @@ export const useCardLists = (userId: string | undefined) => {
         return;
       }
 
+      // ✅ FIX : Convertir le message en JSON si c'est un tableau
+      let messageToSave;
+      if (Array.isArray(newList.message)) {
+        messageToSave = JSON.stringify(newList.message);
+      } else {
+        messageToSave = newList.message || null;
+      }
+
       // Insérer la liste
       const { data: listData, error: listError } = await supabase
         .from("card_lists")
         .insert({
           title: newList.title,
-          message: typeof newList.message === "string" ? newList.message : undefined,
+          message: messageToSave,
           user_id: userId!,
         })
         .select()
@@ -162,7 +182,7 @@ export const useCardLists = (userId: string | undefined) => {
 
       if (error) throw error;
 
-      // Mise à jour locale optimiste
+      // ✅ FIX : Mise à jour locale SANS refetch pour éviter le reset
       setLists((prevLists) =>
         prevLists.map((list) => ({
           ...list,

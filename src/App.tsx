@@ -76,14 +76,17 @@ function App() {
       jsonFiles.map((file) =>
         fetch(file)
           .then((res) => res.json())
-          .then((data: CardList) => ({
-            ...data,
-            cards: data.cards.map((card, index) => ({
-              ...card,
-              id: index + 1,
-              recurrence: card.recurrence ?? 0,
-            })),
-          }))
+          .then((data: CardList) => {
+            console.log(`📥 JSON chargé ${file}:`, data);
+            return {
+              ...data,
+              cards: data.cards.map((card, index) => ({
+                ...card,
+                id: index + 1,
+                recurrence: card.recurrence ?? 0,
+              })),
+            };
+          })
           .catch((error) => {
             console.error(`❌ Erreur lecture ${file}:`, error);
             return null;
@@ -141,6 +144,10 @@ function App() {
         recurrence: card.recurrence ?? 0,
       }))
     );
+    
+    // ✅ DEBUG : Vérifier le message
+    console.log("📋 Message de la liste:", selectedListObject.message);
+    console.log("📋 Type du message:", typeof selectedListObject.message);
     setMessage(selectedListObject.message);
   }, [showVerso, selectedList, lists, isShuffled]);
 
@@ -177,7 +184,7 @@ function App() {
 
   // ========== MISE À JOUR RÉCURRENCE (SANS RECHARGEMENT) ==========
   const updateCardRecurrence = async (cardId: number, newRecurrence: number) => {
-    // Mise à jour locale immédiate
+    // ✅ FIX : Mise à jour locale immédiate sans recharger
     setCards((prevCards) =>
       prevCards.map((card) =>
         card.id === cardId ? { ...card, recurrence: newRecurrence } : card
@@ -187,9 +194,10 @@ function App() {
     try {
       // Sauvegarde en base en arrière-plan
       await updateCardRecurrenceDB(cardId, newRecurrence);
+      console.log(`✅ Récurrence mise à jour : carte ${cardId} -> niveau ${newRecurrence}`);
     } catch (error) {
-      console.error("Erreur mise à jour récurrence:", error);
-      alert("Erreur de sauvegarde. Cliquez sur 'Recharger' pour synchroniser.");
+      console.error("❌ Erreur mise à jour récurrence:", error);
+      alert("Erreur de sauvegarde. Utilisez le bouton rafraîchir dans le header si besoin.");
     }
   };
 
@@ -209,7 +217,7 @@ function App() {
     // Étape 1 : Filtrer par récurrence
     let filteredCards = filterCardsByRecurrence(cards, selectedRecurrence);
 
-    // Étape 2 : Filtrer par plage
+    // Étape 2 : Filtrer par plage (basé sur le RECTO, pas la position)
     if (selectedRange === "all") {
       return filteredCards;
     }
@@ -218,7 +226,10 @@ function App() {
     if (selectedRange.endsWith("-") && !selectedRange.startsWith("-")) {
       const start = parseInt(selectedRange.replace("-", ""));
       if (!isNaN(start)) {
-        filteredCards = filteredCards.filter((_, index) => index + 1 >= start);
+        filteredCards = filteredCards.filter((card) => {
+          const cardNumber = parseInt(card.recto);
+          return !isNaN(cardNumber) && cardNumber >= start;
+        });
       }
       return filteredCards;
     }
@@ -227,7 +238,10 @@ function App() {
     if (selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
       const end = parseInt(selectedRange.replace("-", ""));
       if (!isNaN(end)) {
-        filteredCards = filteredCards.filter((_, index) => index + 1 <= end);
+        filteredCards = filteredCards.filter((card) => {
+          const cardNumber = parseInt(card.recto);
+          return !isNaN(cardNumber) && cardNumber <= end;
+        });
       }
       return filteredCards;
     }
@@ -239,9 +253,9 @@ function App() {
       const end = parseInt(endStr);
 
       if (!isNaN(start) && !isNaN(end)) {
-        filteredCards = filteredCards.filter((_, index) => {
-          const position = index + 1;
-          return position >= start && position <= end;
+        filteredCards = filteredCards.filter((card) => {
+          const cardNumber = parseInt(card.recto);
+          return !isNaN(cardNumber) && cardNumber >= start && cardNumber <= end;
         });
       }
       return filteredCards;
@@ -433,49 +447,9 @@ function App() {
 
       <div className={`${isMobile ? "h-20" : "h-24"}`}></div>
 
-      {message && (
-        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2 rounded-lg w-3/4 m-auto p-2 text-center">
-          {Array.isArray(message) ? (
-            message.map((msg, index) => (
-              <p
-                key={index}
-                className="w-full flex items-center justify-center"
-                style={{
-                  background: msg.color,
-                  opacity: 0.8,
-                  padding: 4,
-                  borderRadius: 8,
-                  color: "black",
-                }}
-              >
-                {msg.text}
-              </p>
-            ))
-          ) : (
-            <p>{message}</p>
-          )}
-        </div>
-      )}
-
-      {/* Indicateur nombre de cartes */}
-      {cards.length > 0 && (
-        <div className="text-center text-sm text-gray-600 mt-4 flex items-center justify-center gap-3">
-          <span>
-            {getFilteredCards().length} carte{getFilteredCards().length > 1 ? "s" : ""} affichée{getFilteredCards().length > 1 ? "s" : ""} sur {cards.length}
-          </span>
-          <button
-            onClick={() => refetch()}
-            className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            title="Recharger les données depuis la base"
-          >
-            ↻ Recharger
-          </button>
-        </div>
-      )}
-
       {/* Message de la liste */}
       {message && (
-        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2 rounded-lg w-3/4 m-auto p-2 text-center">
+        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2 rounded-lg w-3/4 m-auto p-2 text-center mt-4">
           {Array.isArray(message) ? (
             message.map((msg, index) => (
               <p

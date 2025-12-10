@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({
   const [startRange, setStartRange] = useState<string>("");
   const [endRange, setEndRange] = useState<string>("");
 
-  // Options de récurrence avec leurs labels
+  // Options de récurrence
   const recurrenceOptions = [
     { value: 1, label: "≤ Quotidien" },
     { value: 2, label: "≤ 2 jours" },
@@ -55,66 +55,62 @@ const Header: React.FC<HeaderProps> = ({
     { value: 4, label: "≤ Mensuel" },
     { value: 5, label: "≤ Trimestriel" },
     { value: 6, label: "≤ Semestriel" },
-    { value: 7, label: "≤ Annuel" },
-    { value: 8, label: "Toutes" },
+    { value: 7, label: "Toutes" },
   ];
 
-  // Fonction pour valider et mettre à jour la plage
+  // Mise à jour de la plage
   const updateRange = (start: string, end: string) => {
-    // Cas 1: Rien saisi → Afficher toutes les cartes
+    // Aucune saisie → Toutes les cartes
     if (!start && !end) {
       onRangeChange("all");
       return;
     }
 
-    // Cas 2: Seulement start saisi → Afficher cartes >= start
+    // Seulement start → De start à l'infini
     if (start && !end) {
-      const startNum = parseInt(start)+1;
-      console.log("start num =" + startNum );
+      const startNum = parseInt(start);
       if (!isNaN(startNum)) {
         onRangeChange(`${startNum}-`);
       } else {
-        onRangeChange("all"); // Erreur → afficher tout
+        onRangeChange("all");
       }
       return;
     }
 
-    // Cas 3: Seulement end saisi → Afficher cartes <= end
+    // Seulement end → Du début à end
     if (!start && end) {
-      const endNum = parseInt(end)+1;
-      console.log("start num =" + endNum );
+      const endNum = parseInt(end);
       if (!isNaN(endNum)) {
         onRangeChange(`-${endNum}`);
       } else {
-        onRangeChange("all"); // Erreur → afficher tout
+        onRangeChange("all");
       }
       return;
     }
 
-    // Cas 4: Les deux saisis → Afficher cartes entre start et end
+    // Les deux → De start à end
     if (start && end) {
-      const startNum = parseInt(start) + 1;
-      const endNum = parseInt(end) + 1;
+      const startNum = parseInt(start);
+      const endNum = parseInt(end);
 
       if (!isNaN(startNum) && !isNaN(endNum)) {
-        // Assurer que start <= end
         const min = Math.min(startNum, endNum);
         const max = Math.max(startNum, endNum);
         onRangeChange(`${min}-${max}`);
       } else {
-        onRangeChange("all"); // Erreur → afficher tout
+        onRangeChange("all");
       }
     }
   };
 
   const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, ""); // Garde seulement les chiffres
+    const value = e.target.value.replace(/[^0-9]/g, "");
     setStartRange(value);
     updateRange(value, endRange);
   };
 
   const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, ""); // Garde seulement les chiffres
+    const value = e.target.value.replace(/[^0-9]/g, "");
     setEndRange(value);
     updateRange(startRange, value);
   };
@@ -127,7 +123,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      {/* Burger mobile */}
+      {/* Menu burger mobile */}
       {isMobile && (
         <div className="fixed w-full flex justify-between p-4 bg-white z-10">
           <h1>Flashcard</h1>
@@ -142,19 +138,17 @@ const Header: React.FC<HeaderProps> = ({
             : "header fixed z-20 bg-white w-full md:h-10vh md:p-5 md:border-2 md:rounded-md md:border-card-background md:flex md:justify-around md:items-center md:text-sm"
         }`}
       >
+        {/* Bouton ajouter liste */}
         <div className="flex justify-center items-center">
           <button className="w-10 h-10 relative group" onClick={onAddNewList}>
-            <img
-              src={addSvg}
-              alt="icone add"
-              className="fill-current text-card-background"
-            />
+            <img src={addSvg} alt="Ajouter" className="fill-current text-card-background" />
             <span className="absolute top-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               Ajouter une liste
             </span>
           </button>
         </div>
 
+        {/* Sélection de liste */}
         <div className="flex justify-center items-center uppercase">
           <select
             name="list-choice"
@@ -174,11 +168,8 @@ const Header: React.FC<HeaderProps> = ({
           </select>
 
           <div className="relative">
-            <button
-              className="w-10 h-10 ml-2 relative group"
-              onClick={onDeleteList}
-            >
-              <img src={deleteSvg} alt="Supprimer la liste" />
+            <button className="w-10 h-10 ml-2 relative group" onClick={onDeleteList}>
+              <img src={deleteSvg} alt="Supprimer" />
               <span className="absolute top-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Supprimer liste
               </span>
@@ -186,7 +177,7 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Section Récurrence */}
+        {/* Filtre de récurrence */}
         <div className="flex justify-center items-center uppercase">
           <label className="mr-2">Récurrence :</label>
           <select
@@ -204,31 +195,25 @@ const Header: React.FC<HeaderProps> = ({
           </select>
         </div>
 
+        {/* Toggle Recto/Verso */}
         <div className="flex uppercase justify-center items-center">
           Recto / Verso :
           <label className="switch ml-2">
-            <input
-              type="checkbox"
-              checked={showVerso}
-              onChange={onShowVersoChange}
-            />
+            <input type="checkbox" checked={showVerso} onChange={onShowVersoChange} />
             <span className="slider round bg-card-background"></span>
           </label>
         </div>
 
+        {/* Toggle Mélanger */}
         <div className="flex justify-center items-center">
           <label className="mr-2 uppercase">Mélanger :</label>
           <label className="switch">
-            <input
-              type="checkbox"
-              checked={isShuffled}
-              onChange={toggleShuffle}
-            />
+            <input type="checkbox" checked={isShuffled} onChange={toggleShuffle} />
             <span className="slider round bg-card-background"></span>
           </label>
         </div>
 
-        {/* Section plage simplifiée */}
+        {/* Filtre de plage */}
         <div className="flex items-center gap-2">
           <label className="uppercase text-sm">Plage :</label>
           <input
@@ -257,6 +242,7 @@ const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
+        {/* Import JSON */}
         <div className="p-2 border-2 rounded-lg border-textColor">
           <label htmlFor="json-upload" className="cursor-pointer">
             Importer un JSON
@@ -270,15 +256,17 @@ const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
+        {/* Bouton rafraîchir */}
         <div>
           <button className="w-10 h-10 relative group" onClick={resetCards}>
-            <img src={rerollSvg} alt="icone reset" />
+            <img src={rerollSvg} alt="Rafraîchir" />
             <span className="absolute top-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 text-xs text-white bg-black rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               Rafraîchir liste
             </span>
           </button>
         </div>
 
+        {/* Fermer menu mobile */}
         <div>
           {isMobile && isMobileMenuOpen && (
             <button onClick={toggleMobileMenu} className="text-3xl font-bold">
