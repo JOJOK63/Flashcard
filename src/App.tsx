@@ -10,27 +10,29 @@ import { useCardLists } from "./hooks/useCardLists";
 import { Session } from "@supabase/supabase-js";
 
 function App() {
-  // ========== ÉTATS D'AUTHENTIFICATION ==========
+  // ========== AUTHENTIFICATION ==========
   const [session, setSession] = useState<Session | null>(null);
 
-  // ========== ÉTATS EXISTANTS ==========
+  // ========== ÉTATS PRINCIPAUX ==========
   const [showVerso, setShowVerso] = useState<boolean>(false);
   const [cards, setCards] = useState<CardType[]>([]);
   const [selectedList, setSelectedList] = useState<string>("");
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [message, setMessage] = useState<
-    string | { text: string; color?: string }[] | undefined
-  >(undefined);
+  const [message, setMessage] = useState<string | { text: string; color?: string }[] | undefined>(undefined);
+  
+  // ========== FILTRES ==========
   const [isShuffled, setIsShuffled] = useState(false);
   const [selectedRange, setSelectedRange] = useState<string>("all");
+  const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7);
+  
+  // ========== RESPONSIVE ==========
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedRecurrence, setSelectedRecurrence] = useState<number>(7);
 
-  // 🔧 CORRECTION : Utiliser un ref pour éviter les chargements multiples
+  // ========== REF POUR ÉVITER LES DOUBLES CHARGEMENTS ==========
   const hasLoadedDefaultList = useRef(false);
 
-  // ========== HOOK SUPABASE POUR LES LISTES ==========
+  // ========== HOOK SUPABASE ==========
   const {
     lists,
     loading,
@@ -41,17 +43,14 @@ function App() {
     refetch,
   } = useCardLists(session?.user?.id);
 
-  // ========== GESTION DE L'AUTHENTIFICATION ==========
+  // ========== GESTION AUTHENTIFICATION ==========
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // 🔧 CORRECTION : Réinitialiser le flag lors d'un changement d'utilisateur
       if (session) {
         hasLoadedDefaultList.current = false;
       }
@@ -60,104 +59,110 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🔧 CORRECTION : Charger TOUTES les listes du dossier public UNE SEULE FOIS
+  // ========== CHARGEMENT LISTES PAR DÉFAUT ==========
   useEffect(() => {
-    // Conditions de chargement strictes
-    if (!session || loading || hasLoadedDefaultList.current) {
+    if (!session || loading || hasLoadedDefaultList.current || lists.length > 0) {
       return;
     }
 
-    // Charger seulement si aucune liste n'existe
-    if (lists.length === 0) {
-      hasLoadedDefaultList.current = true; // ✅ Marquer comme chargé
+    hasLoadedDefaultList.current = true;
 
-      // 🆕 Liste de tous les fichiers JSON à charger depuis /public
-      const jsonFiles = [
-        "/table-de-rappel.json",
-        "signe-astrologique.json"
-        // Ajoutez ici d'autres fichiers JSON du dossier public
-        // "/liste-exemple-2.json",
-        // "/vocabulaire.json",
-      ];
+    const jsonFiles = [
+      "/table-de-rappel.json",
+      "/signe-astrologique.json"
+    ];
 
-      // Charger tous les fichiers en parallèle
-      Promise.all(
-        jsonFiles.map((file) =>
-          fetch(file)
-            .then((res) => res.json())
-            .then((data: CardList) => ({
-              ...data,
-              cards: data.cards.map((card, index) => ({
-                ...card,
-                id: index + 1,
-                recurrence: card.recurrence ?? 0,
-              })),
-            }))
-            .catch((error) => {
-              console.error(`❌ Erreur lecture ${file}:`, error);
-              return null; // Continuer même si un fichier échoue
-            })
-        )
+    Promise.all(
+      jsonFiles.map((file) =>
+        fetch(file)
+          .then((res) => res.json())
+          .then((data: CardList) => ({
+            ...data,
+            cards: data.cards.map((card, index) => ({
+              ...card,
+              id: index + 1,
+              recurrence: card.recurrence ?? 0,
+            })),
+          }))
+          .catch((error) => {
+            console.error(`❌ Erreur lecture ${file}:`, error);
+            return null;
+          })
       )
-        .then((allLists) => {
-          // Filtrer les listes null (erreurs) et les ajouter une par une
-          const validLists = allLists.filter((list) => list !== null);
-          
-          // Ajouter toutes les listes séquentiellement
-          const addPromises = validLists.map((list) => addList(list!));
-          
-          return Promise.all(addPromises);
-        })
-        .then(() => {
-          console.log("✅ Toutes les listes d'exemple chargées avec succès");
-        })
-        .catch((err) => {
-          console.error("❌ Erreur lors du chargement des listes:", err);
-          hasLoadedDefaultList.current = false; // Réessayer en cas d'erreur
-        });
-    }
+    )
+      .then((allLists) => {
+        const validLists = allLists.filter((list) => list !== null);
+        const addPromises = validLists.map((list) => addList(list!));
+        return Promise.all(addPromises);
+      })
+      .then(() => {
+        console.log("✅ Listes d'exemple chargées");
+      })
+      .catch((err) => {
+        console.error("❌ Erreur chargement listes:", err);
+        hasLoadedDefaultList.current = false;
+      });
   }, [session, lists.length, loading, addList]);
 
-  // ========== SÉLECTIONNER LA PREMIÈRE LISTE AU CHARGEMENT ==========
+  // ========== SÉLECTION PREMIÈRE LISTE ==========
   useEffect(() => {
     if (lists.length > 0 && !selectedList) {
       setSelectedList(lists[0].title);
     }
   }, [lists, selectedList]);
 
-  // ========== CHARGER LES CARTES QUAND LA LISTE CHANGE ==========
+  // ========== CHARGEMENT CARTES ==========
   useEffect(() => {
-    if (selectedList && lists.length > 0) {
-      const selectedListObject = lists.find(
-        (list) => list.title === selectedList
-      );
-      
-      // 🔧 CORRECTION : Vérifier que la liste existe et a des cartes
-      if (!selectedListObject) {
-        setCards([]);
-        setMessage(undefined);
-        return;
-      }
-
-      let selectedCards = selectedListObject.cards || [];
-
-      if (isShuffled) {
-        selectedCards = shuffleArray(selectedCards);
-      }
-
-      setCards(
-        selectedCards.map((card) => ({
-          ...card,
-          isFlipped: showVerso,
-          color: card.color || "",
-          recurrence: card.recurrence ?? 0,
-        }))
-      );
-      setMessage(selectedListObject.message);
+    if (!selectedList || lists.length === 0) {
+      setCards([]);
+      setMessage(undefined);
+      return;
     }
+
+    const selectedListObject = lists.find((list) => list.title === selectedList);
+    
+    if (!selectedListObject) {
+      setCards([]);
+      setMessage(undefined);
+      return;
+    }
+
+    let selectedCards = selectedListObject.cards || [];
+
+    if (isShuffled) {
+      selectedCards = shuffleArray(selectedCards);
+    }
+
+    setCards(
+      selectedCards.map((card) => ({
+        ...card,
+        isFlipped: showVerso,
+        color: card.color || "",
+        recurrence: card.recurrence ?? 0,
+      }))
+    );
+    setMessage(selectedListObject.message);
   }, [showVerso, selectedList, lists, isShuffled]);
 
-  // ========== FONCTIONS DE MANIPULATION DES CARTES ==========
+  // ========== GESTION RESPONSIVE ==========
+  useEffect(() => {
+    const checkSize = () => setIsMobile(window.innerWidth < 768);
+    checkSize();
+    window.addEventListener("resize", checkSize);
+    return () => window.removeEventListener("resize", checkSize);
+  }, []);
+
+  // ========== FONCTIONS UTILITAIRES ==========
+  
+  const shuffleArray = (array: CardType[]) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
   const resetCards = () => {
     setCards(cards.map((card) => ({ ...card, isFlipped: showVerso })));
   };
@@ -170,12 +175,9 @@ function App() {
     );
   };
 
-  // ========== MISE À JOUR DE LA RÉCURRENCE (AVEC SUPABASE) ==========
-  const updateCardRecurrence = async (
-    cardId: number,
-    newRecurrence: number
-  ) => {
-    // Mise à jour optimiste locale
+  // ========== MISE À JOUR RÉCURRENCE (SANS RECHARGEMENT) ==========
+  const updateCardRecurrence = async (cardId: number, newRecurrence: number) => {
+    // Mise à jour locale immédiate
     setCards((prevCards) =>
       prevCards.map((card) =>
         card.id === cardId ? { ...card, recurrence: newRecurrence } : card
@@ -183,18 +185,16 @@ function App() {
     );
 
     try {
+      // Sauvegarde en base en arrière-plan
       await updateCardRecurrenceDB(cardId, newRecurrence);
     } catch (error) {
-      console.error("Erreur lors de la mise à jour de la récurrence:", error);
-      await refetch();
+      console.error("Erreur mise à jour récurrence:", error);
+      alert("Erreur de sauvegarde. Cliquez sur 'Recharger' pour synchroniser.");
     }
   };
 
   // ========== FILTRAGE PAR RÉCURRENCE ==========
-  const filterCardsByRecurrence = (
-    cards: CardType[],
-    selectedRecurrence: number
-  ) => {
+  const filterCardsByRecurrence = (cards: CardType[], selectedRecurrence: number) => {
     if (selectedRecurrence === 7) {
       return cards;
     }
@@ -204,19 +204,63 @@ function App() {
     });
   };
 
+  // ========== FILTRAGE COMPLET (RÉCURRENCE + PLAGE) ==========
+  const getFilteredCards = () => {
+    // Étape 1 : Filtrer par récurrence
+    let filteredCards = filterCardsByRecurrence(cards, selectedRecurrence);
+
+    // Étape 2 : Filtrer par plage
+    if (selectedRange === "all") {
+      return filteredCards;
+    }
+
+    // Format: "10-" (de 10 à l'infini)
+    if (selectedRange.endsWith("-") && !selectedRange.startsWith("-")) {
+      const start = parseInt(selectedRange.replace("-", ""));
+      if (!isNaN(start)) {
+        filteredCards = filteredCards.filter((_, index) => index + 1 >= start);
+      }
+      return filteredCards;
+    }
+
+    // Format: "-80" (du début à 80)
+    if (selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
+      const end = parseInt(selectedRange.replace("-", ""));
+      if (!isNaN(end)) {
+        filteredCards = filteredCards.filter((_, index) => index + 1 <= end);
+      }
+      return filteredCards;
+    }
+
+    // Format: "10-20" (de 10 à 20)
+    if (selectedRange.includes("-") && !selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
+      const [startStr, endStr] = selectedRange.split("-");
+      const start = parseInt(startStr);
+      const end = parseInt(endStr);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        filteredCards = filteredCards.filter((_, index) => {
+          const position = index + 1;
+          return position >= start && position <= end;
+        });
+      }
+      return filteredCards;
+    }
+
+    return filteredCards;
+  };
+
+  // ========== HANDLERS ==========
+  
   const handleRecurrenceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newRecurrence = parseInt(e.target.value);
-    setSelectedRecurrence(newRecurrence);
+    setSelectedRecurrence(parseInt(e.target.value));
   };
 
   const handleShowVersoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setShowVerso(e.target.checked);
   };
 
-  // ========== IMPORT DE FICHIER JSON ==========
-  const handleFileImport = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -251,21 +295,17 @@ function App() {
     setSelectedList(e.target.value);
   };
 
-  // ========== SUPPRESSION DE LISTE ==========
   const deleteList = async () => {
     if (!selectedList) return;
 
-    // 🔧 CORRECTION : Confirmation avant suppression
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${selectedList}" ?`)) {
+    if (!confirm(`Supprimer "${selectedList}" ?`)) {
       return;
     }
 
     try {
       await deleteListDB(selectedList);
 
-      const remainingLists = lists.filter(
-        (list) => list.title !== selectedList
-      );
+      const remainingLists = lists.filter((list) => list.title !== selectedList);
       if (remainingLists.length > 0) {
         setSelectedList(remainingLists[0].title);
       } else {
@@ -274,7 +314,7 @@ function App() {
         setMessage(undefined);
       }
     } catch (error) {
-      alert("Erreur lors de la suppression de la liste");
+      alert("Erreur lors de la suppression");
       console.error(error);
     }
   };
@@ -291,7 +331,6 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // ========== SAUVEGARDE NOUVELLE LISTE ==========
   const saveNewList = async (newList: {
     title: string;
     message?: string | { text: string; color?: string }[];
@@ -321,15 +360,6 @@ function App() {
     }
   };
 
-  const shuffleArray = (array: CardType[]) => {
-    const newArray = [...array];
-    for (let i = newArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-    }
-    return newArray;
-  };
-
   const toggleShuffle = () => {
     setIsShuffled((prev) => !prev);
   };
@@ -338,55 +368,11 @@ function App() {
     setSelectedRange(range);
   };
 
-  // ========== FILTRAGE DES CARTES ==========
-  const getFilteredCards = () => {
-    let filteredCards = cards;
-
-    filteredCards = filterCardsByRecurrence(filteredCards, selectedRecurrence);
-
-    if (selectedRange === "all") {
-      return filteredCards;
-    }
-
-    if (selectedRange.endsWith("-") && !selectedRange.startsWith("-")) {
-      const start = parseInt(selectedRange.replace("-", ""));
-      return filteredCards.filter((card) => card.id >= start);
-    }
-
-    if (selectedRange.startsWith("-") && !selectedRange.endsWith("-")) {
-      const end = parseInt(selectedRange.replace("-", ""));
-      return filteredCards.filter((card) => card.id <= end);
-    }
-
-    if (
-      selectedRange.includes("-") &&
-      !selectedRange.startsWith("-") &&
-      !selectedRange.endsWith("-")
-    ) {
-      const [startStr, endStr] = selectedRange.split("-");
-      const start = parseInt(startStr);
-      const end = parseInt(endStr);
-
-      if (!isNaN(start) && !isNaN(end)) {
-        return filteredCards.filter(
-          (card) => card.id >= start && card.id <= end
-        );
-      }
-    }
-
-    return filteredCards;
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  useEffect(() => {
-    const checkSize = () => setIsMobile(window.innerWidth < 768);
-    checkSize();
-    window.addEventListener("resize", checkSize);
-    return () => window.removeEventListener("resize", checkSize);
-  }, []);
-
-  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
-
-  // ========== AFFICHAGE CONDITIONNEL ==========
+  // ========== RENDU CONDITIONNEL ==========
 
   if (!session) {
     return <Auth />;
@@ -396,9 +382,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-2xl font-bold mb-4">
-            Chargement de vos flashcards...
-          </div>
+          <div className="text-2xl font-bold mb-4">Chargement...</div>
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-card-background mx-auto"></div>
         </div>
       </div>
@@ -422,6 +406,8 @@ function App() {
     );
   }
 
+  // ========== RENDU PRINCIPAL ==========
+  
   return (
     <>
       <Header
@@ -471,10 +457,53 @@ function App() {
         </div>
       )}
 
+      {/* Indicateur nombre de cartes */}
+      {cards.length > 0 && (
+        <div className="text-center text-sm text-gray-600 mt-4 flex items-center justify-center gap-3">
+          <span>
+            {getFilteredCards().length} carte{getFilteredCards().length > 1 ? "s" : ""} affichée{getFilteredCards().length > 1 ? "s" : ""} sur {cards.length}
+          </span>
+          <button
+            onClick={() => refetch()}
+            className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            title="Recharger les données depuis la base"
+          >
+            ↻ Recharger
+          </button>
+        </div>
+      )}
+
+      {/* Message de la liste */}
+      {message && (
+        <div className="message flex flex-col gap-2 md:items-stretch md:flex-row md:justify-around border-2 rounded-lg w-3/4 m-auto p-2 text-center">
+          {Array.isArray(message) ? (
+            message.map((msg, index) => (
+              <p
+                key={index}
+                className="w-full flex items-center justify-center"
+                style={{
+                  background: msg.color,
+                  opacity: 0.8,
+                  padding: 4,
+                  borderRadius: 8,
+                  color: "black",
+                }}
+              >
+                {msg.text}
+              </p>
+            ))
+          ) : (
+            <p>{message}</p>
+          )}
+        </div>
+      )}
+
+      {/* Modal création */}
       {showModal && (
         <Modal onClose={() => setShowModal(false)} onSave={saveNewList} />
       )}
 
+      {/* Grille de cartes */}
       <div className="px-4 py-8 flex flex-wrap gap-5 justify-center items-center my-16 lg:px-40 lg:my-10">
         {getFilteredCards().length === 0 ? (
           <div className="text-center text-gray-500 text-lg">
@@ -500,6 +529,7 @@ function App() {
         )}
       </div>
 
+      {/* Bouton déconnexion */}
       <button
         onClick={() => supabase.auth.signOut()}
         className="fixed bottom-4 right-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-lg"

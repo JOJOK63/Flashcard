@@ -16,20 +16,21 @@ export const useCardLists = (userId: string | undefined) => {
     fetchLists();
   }, [userId]);
 
+  // ========== RÉCUPÉRATION DES LISTES ==========
   const fetchLists = async () => {
     try {
       setLoading(true);
       
-      // 🔧 CORRECTION : Filtrer par user_id dès la requête
+      // Récupérer les listes de l'utilisateur
       const { data: listsData, error: listsError } = await supabase
         .from("card_lists")
         .select("*")
-        .eq("user_id", userId!) // ✅ Ajout du filtre user
+        .eq("user_id", userId!)
         .order("created_at", { ascending: true });
 
       if (listsError) throw listsError;
 
-      // Si aucune liste, retourner un tableau vide
+      // Si aucune liste
       if (!listsData || listsData.length === 0) {
         setLists([]);
         setError(null);
@@ -40,16 +41,16 @@ export const useCardLists = (userId: string | undefined) => {
       // Récupérer les IDs des listes
       const listIds = listsData.map(list => list.id);
 
-      // 🔧 CORRECTION : Récupérer seulement les cartes des listes de l'utilisateur
+      // Récupérer les cartes associées
       const { data: cardsData, error: cardsError } = await supabase
         .from("cards")
         .select("*")
-        .in("list_id", listIds) // ✅ Filtrer par liste
+        .in("list_id", listIds)
         .order("position", { ascending: true });
 
       if (cardsError) throw cardsError;
 
-      // 🔧 CORRECTION : Formater correctement les données
+      // Formater les données
       const formattedLists: CardList[] = listsData.map((list) => ({
         title: list.title,
         message: list.message || undefined,
@@ -61,7 +62,7 @@ export const useCardLists = (userId: string | undefined) => {
             title: card.title,
             img: card.img || "",
             color: card.color || "",
-            recurrence: card.recurrence ?? 0, // ✅ Valeur par défaut
+            recurrence: card.recurrence ?? 0,
             isFlipped: false,
           })),
       }));
@@ -76,9 +77,10 @@ export const useCardLists = (userId: string | undefined) => {
     }
   };
 
+  // ========== AJOUT D'UNE LISTE ==========
   const addList = async (newList: CardList) => {
     try {
-      // 🔧 CORRECTION : Vérifier si la liste existe déjà
+      // Vérifier si la liste existe déjà
       const { data: existingList } = await supabase
         .from("card_lists")
         .select("id")
@@ -88,7 +90,7 @@ export const useCardLists = (userId: string | undefined) => {
 
       if (existingList) {
         console.log("Liste déjà existante:", newList.title);
-        return; // ✅ Ne pas créer de doublon
+        return;
       }
 
       // Insérer la liste
@@ -104,19 +106,17 @@ export const useCardLists = (userId: string | undefined) => {
 
       if (listError) throw listError;
 
-      // 🔧 CORRECTION : Vérifier qu'il y a des cartes à insérer
+      // Insérer les cartes
       if (newList.cards && newList.cards.length > 0) {
         const cardsToInsert = newList.cards.map((card, index) => ({
           list_id: listData.id,
           recto: card.recto,
           title: card.title,
           img: card.img || "",
-          color: card.color || "", // 🔧 FIX : S'assurer que la couleur est bien transmise
+          color: card.color || "",
           recurrence: card.recurrence ?? 0,
           position: index,
         }));
-
-        console.log("📤 Insertion des cartes:", cardsToInsert); // Debug
 
         const { error: cardsError } = await supabase
           .from("cards")
@@ -135,14 +135,14 @@ export const useCardLists = (userId: string | undefined) => {
     }
   };
 
+  // ========== SUPPRESSION D'UNE LISTE ==========
   const deleteList = async (listTitle: string) => {
     try {
-      // 🔧 CORRECTION : Supprimer par user_id ET title
       const { error } = await supabase
         .from("card_lists")
         .delete()
         .eq("title", listTitle)
-        .eq("user_id", userId!); // ✅ Sécurité supplémentaire
+        .eq("user_id", userId!);
 
       if (error) throw error;
       await fetchLists();
@@ -152,6 +152,7 @@ export const useCardLists = (userId: string | undefined) => {
     }
   };
 
+  // ========== MISE À JOUR RÉCURRENCE ==========
   const updateCardRecurrence = async (cardId: number, recurrence: number) => {
     try {
       const { error } = await supabase

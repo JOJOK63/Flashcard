@@ -55,7 +55,8 @@ const Header: React.FC<HeaderProps> = ({
     { value: 4, label: "≤ Mensuel" },
     { value: 5, label: "≤ Trimestriel" },
     { value: 6, label: "≤ Semestriel" },
-    { value: 7, label: "Toutes" },
+    { value: 7, label: "≤ Annuel" },
+    { value: 8, label: "Toutes" },
   ];
 
   // Fonction pour valider et mettre à jour la plage
@@ -68,7 +69,8 @@ const Header: React.FC<HeaderProps> = ({
 
     // Cas 2: Seulement start saisi → Afficher cartes >= start
     if (start && !end) {
-      const startNum = parseInt(start);
+      const startNum = parseInt(start)+1;
+      console.log("start num =" + startNum );
       if (!isNaN(startNum)) {
         onRangeChange(`${startNum}-`);
       } else {
@@ -79,7 +81,8 @@ const Header: React.FC<HeaderProps> = ({
 
     // Cas 3: Seulement end saisi → Afficher cartes <= end
     if (!start && end) {
-      const endNum = parseInt(end);
+      const endNum = parseInt(end)+1;
+      console.log("start num =" + endNum );
       if (!isNaN(endNum)) {
         onRangeChange(`-${endNum}`);
       } else {
@@ -90,8 +93,8 @@ const Header: React.FC<HeaderProps> = ({
 
     // Cas 4: Les deux saisis → Afficher cartes entre start et end
     if (start && end) {
-      const startNum = parseInt(start);
-      const endNum = parseInt(end);
+      const startNum = parseInt(start) + 1;
+      const endNum = parseInt(end) + 1;
 
       if (!isNaN(startNum) && !isNaN(endNum)) {
         // Assurer que start <= end
